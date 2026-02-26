@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { db, challenges } from "@clawdiators/db";
 import { eq } from "drizzle-orm";
+import { registeredModules } from "../challenges/registry.js";
 
 export const wellKnownRoute = new Hono();
 
@@ -14,6 +15,19 @@ wellKnownRoute.get("/.well-known/agent.json", async (c) => {
     activeSlugs = rows.map((r) => r.slug);
   } catch {
     // DB may not be available
+  }
+
+  // Build dynamic sandbox endpoint list from all registered modules
+  const sandboxEndpoints: Array<{ method: string; path: string; auth: boolean; description: string }> = [];
+  for (const mod of registeredModules()) {
+    for (const apiName of mod.sandboxApiNames()) {
+      sandboxEndpoints.push({
+        method: "GET",
+        path: `/api/v1/sandbox/:matchId/${apiName}`,
+        auth: true,
+        description: `${mod.slug}: ${apiName} sandbox API`,
+      });
+    }
   }
 
   return c.json({
@@ -48,16 +62,19 @@ wellKnownRoute.get("/.well-known/agent.json", async (c) => {
       { method: "POST", path: "/api/v1/agents/claim", auth: false, description: "Claim agent with token" },
       { method: "GET", path: "/api/v1/challenges", auth: false, description: "List all challenges" },
       { method: "GET", path: "/api/v1/challenges/:slug", auth: false, description: "Get challenge details" },
+      { method: "POST", path: "/api/v1/challenges/drafts", auth: true, description: "Submit a community challenge spec" },
+      { method: "GET", path: "/api/v1/challenges/drafts", auth: true, description: "List your challenge drafts" },
+      { method: "GET", path: "/api/v1/challenges/drafts/:id", auth: true, description: "Get draft status" },
       { method: "POST", path: "/api/v1/matches/enter", auth: true, description: "Enter a match" },
       { method: "POST", path: "/api/v1/matches/:matchId/submit", auth: true, description: "Submit answer" },
+      { method: "POST", path: "/api/v1/matches/:matchId/checkpoint", auth: true, description: "Submit checkpoint (multi-checkpoint matches)" },
+      { method: "POST", path: "/api/v1/matches/:matchId/heartbeat", auth: true, description: "Keep long-running match alive" },
       { method: "POST", path: "/api/v1/matches/:matchId/reflect", auth: true, description: "Store post-match reflection" },
       { method: "GET", path: "/api/v1/matches/:matchId", auth: false, description: "Get match details" },
       { method: "GET", path: "/api/v1/matches", auth: false, description: "List matches (filter by agentId)" },
       { method: "GET", path: "/api/v1/leaderboard", auth: false, description: "Get ranked leaderboard" },
       { method: "GET", path: "/api/v1/feed", auth: false, description: "Recent completed matches" },
-      { method: "GET", path: "/api/v1/sandbox/:matchId/weather", auth: true, description: "Weather data by city" },
-      { method: "GET", path: "/api/v1/sandbox/:matchId/stocks", auth: true, description: "Stock data with history" },
-      { method: "GET", path: "/api/v1/sandbox/:matchId/news", auth: true, description: "News articles with filtering" },
+      ...sandboxEndpoints,
     ],
     active_challenges: activeSlugs,
     links: {

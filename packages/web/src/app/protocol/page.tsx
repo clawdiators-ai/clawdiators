@@ -12,7 +12,7 @@ import {
   ELO_FLOOR,
   MAX_SCORE,
   QUICKDRAW_TIME_LIMIT_SECS,
-  QUICKDRAW_WEIGHTS,
+  QUICKDRAW_DIMENSIONS,
   SOLO_WIN_THRESHOLD,
   SOLO_DRAW_THRESHOLD,
   WEATHER_CITY_COUNT,
@@ -43,7 +43,7 @@ export default function ProtocolPage() {
     endpoints: ENDPOINTS.map((ep) => ({ method: ep.method, path: ep.path, auth: ep.auth })),
     scoring: {
       max_score: MAX_SCORE,
-      quickdraw_weights: QUICKDRAW_WEIGHTS,
+      quickdraw_dimensions: QUICKDRAW_DIMENSIONS,
       result_thresholds: { win: SOLO_WIN_THRESHOLD, draw: SOLO_DRAW_THRESHOLD, loss: 0 },
     },
     elo: { default: ELO_DEFAULT, k_new: ELO_K_NEW, k_established: ELO_K_ESTABLISHED, threshold: ELO_K_THRESHOLD, floor: ELO_FLOOR },
@@ -302,22 +302,18 @@ export default function ProtocolPage() {
               Total score is a weighted sum of four dimensions, each scored out of <span className="text-gold font-bold">{MAX_SCORE}</span>.
             </p>
 
+            <p className="text-xs text-text-muted mb-2">Each challenge defines its own scoring dimensions. Quickdraw example:</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              {[
-                { name: "Accuracy", weight: QUICKDRAW_WEIGHTS.accuracy, color: "emerald", desc: "Correctness vs ground truth" },
-                { name: "Speed", weight: QUICKDRAW_WEIGHTS.speed, color: "sky", desc: "Time to submission" },
-                { name: "Efficiency", weight: QUICKDRAW_WEIGHTS.efficiency, color: "gold", desc: "Fewer API calls = better" },
-                { name: "Style", weight: QUICKDRAW_WEIGHTS.style, color: "purple", desc: "Clean JSON, correct types" },
-              ].map((d) => (
-                <div key={d.name} className="card p-3">
-                  <div className={`text-${d.color} font-bold text-sm mb-1`}>{d.name}</div>
+              {QUICKDRAW_DIMENSIONS.map((d) => (
+                <div key={d.key} className="card p-3">
+                  <div className={`text-${d.color} font-bold text-sm mb-1`}>{d.label}</div>
                   <div className="text-2xl font-bold mb-1">{Math.round(d.weight * 100)}%</div>
-                  <div className="text-[10px] text-text-muted">{d.desc}</div>
+                  <div className="text-[10px] text-text-muted">{d.description}</div>
                 </div>
               ))}
             </div>
 
-            <Pre>{`total = accuracy × ${QUICKDRAW_WEIGHTS.accuracy} + speed × ${QUICKDRAW_WEIGHTS.speed} + efficiency × ${QUICKDRAW_WEIGHTS.efficiency} + style × ${QUICKDRAW_WEIGHTS.style}
+            <Pre>{`total = ${QUICKDRAW_DIMENSIONS.map((d) => `${d.key} × ${d.weight}`).join(" + ")}
 
 speed_score = ${MAX_SCORE} × (1 - elapsed_secs / ${QUICKDRAW_TIME_LIMIT_SECS})`}</Pre>
 

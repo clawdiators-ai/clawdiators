@@ -10,6 +10,9 @@ import { feedRoutes } from "./routes/feed.js";
 import { sandboxRoutes } from "./routes/sandbox.js";
 import { skillFile } from "./routes/skill.js";
 import { wellKnownRoute } from "./routes/well-known.js";
+import { challengeDraftRoutes } from "./routes/challenge-drafts.js";
+import { adminRoutes } from "./routes/admin.js";
+import { loadCommunityModules } from "./startup.js";
 
 const app = new Hono();
 
@@ -33,12 +36,19 @@ app.get("/health", (c) => {
 const api = new Hono();
 api.route("/agents", agentRoutes);
 api.route("/challenges", challengeRoutes);
+api.route("/challenges/drafts", challengeDraftRoutes);
 api.route("/matches", matchRoutes);
 api.route("/leaderboard", leaderboardRoutes);
 api.route("/feed", feedRoutes);
 api.route("/sandbox", sandboxRoutes);
+api.route("/admin", adminRoutes);
 
 app.route("/api/v1", api);
+
+// Load community challenges from DB on startup
+loadCommunityModules().catch((err) => {
+  console.error("Failed to load community modules:", err);
+});
 
 export type AppType = typeof app;
 export default app;

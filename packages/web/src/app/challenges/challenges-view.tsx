@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 
+interface ScoringDimension {
+  key: string;
+  label: string;
+  weight: number;
+  description: string;
+  color: string;
+}
+
 interface Challenge {
   slug: string;
   name: string;
@@ -9,16 +17,14 @@ interface Challenge {
   lore: string;
   category: string;
   difficulty: string;
+  match_type: string;
   time_limit_secs: number;
   max_score: number;
   sandbox_apis: string[];
   active: boolean;
-  scoring_weights: {
-    accuracy: number;
-    speed: number;
-    efficiency: number;
-    style: number;
-  };
+  scoring_dimensions: ScoringDimension[];
+  author_agent_id: string | null;
+  author_name: string | null;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -27,6 +33,21 @@ const CATEGORY_COLORS: Record<string, string> = {
   efficiency: "text-gold",
   recovery: "text-purple",
   relay: "text-coral",
+  coding: "text-emerald",
+  reasoning: "text-sky",
+  context: "text-gold",
+  memory: "text-purple",
+  endurance: "text-coral",
+  adversarial: "text-coral",
+  multimodal: "text-sky",
+};
+
+const DIMENSION_COLORS: Record<string, string> = {
+  emerald: "text-emerald",
+  sky: "text-sky",
+  gold: "text-gold",
+  purple: "text-purple",
+  coral: "text-coral",
 };
 
 export function ChallengesView({ challenges }: { challenges: Challenge[] }) {
@@ -148,6 +169,11 @@ function ChallengeCard({ challenge: ch }: { challenge: Challenge }) {
             <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded badge-${ch.difficulty}`}>
               {ch.difficulty}
             </span>
+            {ch.match_type !== "single" && (
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-bg-elevated text-sky border border-border">
+                {ch.match_type}
+              </span>
+            )}
             {inactive && (
               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-bg-elevated text-text-muted border border-border">
                 Soon
@@ -155,7 +181,14 @@ function ChallengeCard({ challenge: ch }: { challenge: Challenge }) {
             )}
           </div>
 
-          <h3 className="text-sm font-bold mb-1">{ch.name}</h3>
+          <h3 className="text-sm font-bold mb-1">
+            {ch.name}
+            {ch.author_name && (
+              <span className="text-xs font-normal text-text-muted ml-2">
+                by {ch.author_name}
+              </span>
+            )}
+          </h3>
           <p className="text-xs text-text-secondary mb-3">{ch.description}</p>
 
           {/* Metadata row */}
@@ -176,20 +209,16 @@ function ChallengeCard({ challenge: ch }: { challenge: Challenge }) {
             )}
           </div>
 
-          {/* Scoring weights inline */}
+          {/* Scoring dimensions — flexible */}
           <div className="flex flex-wrap gap-2">
-            <span className="text-[10px] text-text-muted">
-              accuracy:<span className="text-emerald font-bold ml-1">{Math.round(ch.scoring_weights.accuracy * 100)}%</span>
-            </span>
-            <span className="text-[10px] text-text-muted">
-              speed:<span className="text-sky font-bold ml-1">{Math.round(ch.scoring_weights.speed * 100)}%</span>
-            </span>
-            <span className="text-[10px] text-text-muted">
-              efficiency:<span className="text-gold font-bold ml-1">{Math.round(ch.scoring_weights.efficiency * 100)}%</span>
-            </span>
-            <span className="text-[10px] text-text-muted">
-              style:<span className="text-purple font-bold ml-1">{Math.round(ch.scoring_weights.style * 100)}%</span>
-            </span>
+            {ch.scoring_dimensions.map((dim) => (
+              <span key={dim.key} className="text-[10px] text-text-muted">
+                {dim.label.toLowerCase()}:
+                <span className={`${DIMENSION_COLORS[dim.color] || "text-text"} font-bold ml-1`}>
+                  {Math.round(dim.weight * 100)}%
+                </span>
+              </span>
+            ))}
           </div>
         </div>
       </div>

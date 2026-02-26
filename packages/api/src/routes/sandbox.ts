@@ -1,192 +1,49 @@
 import { Hono } from "hono";
-import { eq, and } from "drizzle-orm";
-import { db, matches } from "@clawdiators/db";
-import { generateQuickdrawData } from "../challenges/quickdraw/index.js";
+import { eq } from "drizzle-orm";
+import { db, matches, challenges } from "@clawdiators/db";
+import { getChallenge } from "../challenges/registry.js";
 import { errorEnvelope } from "../middleware/envelope.js";
-import type { ApiCallLogEntry } from "@clawdiators/shared";
 
 export const sandboxRoutes = new Hono();
 
-// Middleware: validate match and load data
-async function getMatchAndData(matchId: string) {
+/**
+ * Generic sandbox dispatcher.
+ * Routes: GET /sandbox/:matchId/:apiName/*
+ *
+ * Loads the match, looks up the challenge module, and delegates
+ * to that module's sandbox Hono sub-app.
+ */
+sandboxRoutes.all("/:matchId/*", async (c, next) => {
+  const matchId = c.req.param("matchId");
+
+  // Load match
   const match = await db.query.matches.findFirst({
     where: eq(matches.id, matchId),
   });
-
-  if (!match) return null;
-  if (match.status !== "active") return null;
-  if (new Date() > match.expiresAt) return null;
-
-  const data = generateQuickdrawData(match.seed);
-  return { match, data };
-}
-
-// Log API call
-async function logApiCall(
-  matchId: string,
-  currentLog: ApiCallLogEntry[],
-  method: string,
-  path: string,
-  status: number,
-  startTime: number,
-) {
-  const entry: ApiCallLogEntry = {
-    ts: new Date().toISOString(),
-    method,
-    path,
-    status,
-    durationMs: Date.now() - startTime,
-  };
-  await db
-    .update(matches)
-    .set({ apiCallLog: [...currentLog, entry] })
-    .where(eq(matches.id, matchId));
-}
-
-// GET /sandbox/:matchId/weather
-sandboxRoutes.get("/:matchId/weather", async (c) => {
-  const startTime = Date.now();
-  const matchId = c.req.param("matchId");
-  const result = await getMatchAndData(matchId);
-
-  if (!result) {
-    return errorEnvelope(
-      c,
-      "Match not found or expired",
-      404,
-      "The sands have swallowed this arena.",
-    );
+  if (!match) {
+    return errorEnvelope(c, "Match not found", 404, "The sands have swallowed this arena.");
+  }
+  if (match.status !== "active") {
+    return errorEnvelope(c, "Match is not active", 400, "This bout is no longer in progress.");
+  }
+  if (new Date() > match.expiresAt) {
+    return errorEnvelope(c, "Match has expired", 410, "The sands of time have run out.");
   }
 
-  const city = c.req.query("city");
-
-  await logApiCall(
-    matchId,
-    result.match.apiCallLog,
-    "GET",
-    `/sandbox/${matchId}/weather${city ? `?city=${city}` : ""}`,
-    200,
-    startTime,
-  );
-
-  if (city) {
-    const entry = result.data.weather.find(
-      (w) => w.city.toLowerCase() === city.toLowerCase(),
-    );
-    if (!entry) {
-      return c.json({ error: "City not found", available_cities: result.data.weather.map((w) => w.city) }, 404);
-    }
-    return c.json(entry);
-  }
-
-  return c.json({ cities: result.data.weather });
-});
-
-// GET /sandbox/:matchId/stocks
-sandboxRoutes.get("/:matchId/stocks", async (c) => {
-  const startTime = Date.now();
-  const matchId = c.req.param("matchId");
-  const result = await getMatchAndData(matchId);
-
-  if (!result) {
-    return errorEnvelope(
-      c,
-      "Match not found or expired",
-      404,
-      "The sands have swallowed this arena.",
-    );
-  }
-
-  const ticker = c.req.query("ticker");
-  const date = c.req.query("date");
-
-  await logApiCall(
-    matchId,
-    result.match.apiCallLog,
-    "GET",
-    `/sandbox/${matchId}/stocks${ticker ? `?ticker=${ticker}` : ""}${date ? `${ticker ? "&" : "?"}date=${date}` : ""}`,
-    200,
-    startTime,
-  );
-
-  if (ticker) {
-    const stock = result.data.stocks.find(
-      (s) => s.ticker.toLowerCase() === ticker.toLowerCase(),
-    );
-    if (!stock) {
-      return c.json({ error: "Ticker not found", available_tickers: result.data.stocks.map((s) => s.ticker) }, 404);
-    }
-    if (date) {
-      const day = stock.history.find((d) => d.date === date);
-      if (!day) {
-        return c.json({ error: "Date not in range", ticker: stock.ticker, date_range: { from: stock.history[0].date, to: stock.history[stock.history.length - 1].date } }, 404);
-      }
-      return c.json({ ticker: stock.ticker, company: stock.company, ...day });
-    }
-    return c.json(stock);
-  }
-
-  // Return summary (tickers + date range, not full history)
-  return c.json({
-    stocks: result.data.stocks.map((s) => ({
-      ticker: s.ticker,
-      company: s.company,
-      latest_close: s.history[s.history.length - 1].close,
-      date_range: {
-        from: s.history[0].date,
-        to: s.history[s.history.length - 1].date,
-      },
-    })),
+  // Load challenge to find the module
+  const challenge = await db.query.challenges.findFirst({
+    where: eq(challenges.id, match.challengeId),
   });
-});
-
-// GET /sandbox/:matchId/news
-sandboxRoutes.get("/:matchId/news", async (c) => {
-  const startTime = Date.now();
-  const matchId = c.req.param("matchId");
-  const result = await getMatchAndData(matchId);
-
-  if (!result) {
-    return errorEnvelope(
-      c,
-      "Match not found or expired",
-      404,
-      "The sands have swallowed this arena.",
-    );
+  if (!challenge) {
+    return errorEnvelope(c, "Challenge not found", 500);
   }
 
-  const topic = c.req.query("topic");
-  const search = c.req.query("search"); // search in headlines/summaries
-
-  await logApiCall(
-    matchId,
-    result.match.apiCallLog,
-    "GET",
-    `/sandbox/${matchId}/news${topic ? `?topic=${topic}` : ""}${search ? `${topic ? "&" : "?"}search=${search}` : ""}`,
-    200,
-    startTime,
-  );
-
-  let articles = result.data.news;
-
-  if (topic) {
-    articles = articles.filter(
-      (a) => a.topic.toLowerCase() === topic.toLowerCase(),
-    );
+  const mod = getChallenge(challenge.slug);
+  if (!mod) {
+    return errorEnvelope(c, "Challenge module not found", 501, "This trial's sandbox is still under construction.");
   }
 
-  if (search) {
-    const s = search.toLowerCase();
-    articles = articles.filter(
-      (a) =>
-        a.headline.toLowerCase().includes(s) ||
-        a.summary.toLowerCase().includes(s) ||
-        a.mentions.some((m) => m.toLowerCase().includes(s)),
-    );
-  }
-
-  return c.json({
-    articles,
-    total: articles.length,
-  });
+  // Delegate to the module's sandbox routes
+  const sandboxApp = mod.sandboxRoutes();
+  return sandboxApp.fetch(c.req.raw);
 });

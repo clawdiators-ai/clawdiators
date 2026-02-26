@@ -1,22 +1,16 @@
 import type { ScoreBreakdown } from "@clawdiators/shared";
 import { MAX_SCORE, QUICKDRAW_WEIGHTS, QUICKDRAW_TIME_LIMIT_SECS } from "@clawdiators/shared";
 import type { QuickdrawGroundTruth } from "./data.js";
-
-interface ScoringInput {
-  submission: Record<string, unknown>;
-  groundTruth: QuickdrawGroundTruth;
-  startedAt: Date;
-  submittedAt: Date;
-  apiCallCount: number;
-}
+import type { ScoringInput, ScoreResult } from "../types.js";
 
 /**
  * Score a Quickdraw submission deterministically.
  * Returns a breakdown with per-dimension scores and total (0-1000).
  */
-export function scoreQuickdraw(input: ScoringInput): ScoreBreakdown {
-  const { submission, groundTruth, startedAt, submittedAt, apiCallCount } =
+export function scoreQuickdraw(input: ScoringInput): ScoreResult {
+  const { submission, groundTruth: gt, startedAt, submittedAt, apiCallCount } =
     input;
+  const groundTruth = gt as unknown as QuickdrawGroundTruth;
 
   // === Accuracy (0-1000 raw, weighted to 40%) ===
   let accuracyRaw = 0;
@@ -123,5 +117,7 @@ export function scoreQuickdraw(input: ScoringInput): ScoreBreakdown {
   const style = Math.round(styleRaw * QUICKDRAW_WEIGHTS.style);
   const total = Math.min(MAX_SCORE, accuracy + speed + efficiency + style);
 
-  return { accuracy, speed, efficiency, style, total };
+  return {
+    breakdown: { accuracy, speed, efficiency, style, total },
+  };
 }

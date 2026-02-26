@@ -3,13 +3,12 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, desc, and } from "drizzle-orm";
 import { db, matches, agents, challenges } from "@clawdiators/db";
-import { ELO_DEFAULT } from "@clawdiators/shared";
+import { ELO_DEFAULT, HEARTBEAT_GRACE_PERIOD_MS } from "@clawdiators/shared";
 import { authMiddleware } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
 import { generateBoutName, generateFlavourText, computeTitle, computeAllTitles } from "../services/whimsy.js";
 import { calculateElo, scoreToResult } from "../services/elo.js";
-import { generateQuickdrawData } from "../challenges/quickdraw/index.js";
-import { scoreQuickdraw } from "../challenges/quickdraw/scorer.js";
+import { getChallenge } from "../challenges/registry.js";
 
 export const matchRoutes = new Hono();
 
@@ -33,6 +32,15 @@ matchRoutes.post(
     if (!challenge) {
       return errorEnvelope(c, "Challenge not found", 404);
     }
+    if (!challenge.active) {
+      return errorEnvelope(c, "Challenge is not active yet", 400, "Patience, gladiator. This trial is not yet open.");
+    }
+
+    // Look up the challenge module
+    const mod = getChallenge(challenge_slug);
+    if (!mod) {
+      return errorEnvelope(c, "Challenge module not implemented", 501, "This trial's arena is still under construction.");
+    }
 
     // Check for existing active match
     const existingActive = await db.query.matches.findFirst({
@@ -50,7 +58,10 @@ matchRoutes.post(
           .where(eq(matches.id, existingActive.id));
       } else {
         // Return existing match info
-        const data = generateQuickdrawData(existingActive.seed);
+        const sandboxUrls: Record<string, string> = {};
+        for (const api of mod.sandboxApiNames()) {
+          sandboxUrls[api] = `/api/v1/sandbox/${existingActive.id}/${api}`;
+        }
         return envelope(c, {
           match_id: existingActive.id,
           bout_name: existingActive.boutName,
@@ -58,11 +69,8 @@ matchRoutes.post(
           objective: existingActive.objective,
           time_limit_secs: challenge.timeLimitSecs,
           expires_at: existingActive.expiresAt,
-          sandbox_urls: {
-            weather: `/api/v1/sandbox/${existingActive.id}/weather`,
-            stocks: `/api/v1/sandbox/${existingActive.id}/stocks`,
-            news: `/api/v1/sandbox/${existingActive.id}/news`,
-          },
+          match_type: challenge.matchType,
+          sandbox_urls: sandboxUrls,
           submit_url: `/api/v1/matches/${existingActive.id}/submit`,
           note: "You already have an active match. Complete or wait for it to expire.",
         }, 200, "Your current bout awaits, gladiator. Do not keep the crowd waiting.");
@@ -72,7 +80,7 @@ matchRoutes.post(
     // Generate match
     const seed = Math.floor(Math.random() * 2147483647);
     const boutName = generateBoutName(seed);
-    const data = generateQuickdrawData(seed);
+    const data = mod.generateData(seed, challenge.config);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + challenge.timeLimitSecs * 1000);
 
@@ -90,6 +98,19 @@ matchRoutes.post(
       })
       .returning();
 
+    const sandboxUrls: Record<string, string> = {};
+    for (const api of mod.sandboxApiNames()) {
+      sandboxUrls[api] = `/api/v1/sandbox/${match.id}/${api}`;
+    }
+
+    const extraUrls: Record<string, string> = {};
+    if (challenge.matchType === "multi-checkpoint") {
+      extraUrls.checkpoint_url = `/api/v1/matches/${match.id}/checkpoint`;
+    }
+    if (challenge.matchType === "long-running") {
+      extraUrls.heartbeat_url = `/api/v1/matches/${match.id}/heartbeat`;
+    }
+
     return envelope(
       c,
       {
@@ -99,17 +120,15 @@ matchRoutes.post(
           slug: challenge.slug,
           name: challenge.name,
           category: challenge.category,
+          match_type: challenge.matchType,
         },
         objective: data.objective,
         time_limit_secs: challenge.timeLimitSecs,
         started_at: match.startedAt,
         expires_at: match.expiresAt,
-        sandbox_urls: {
-          weather: `/api/v1/sandbox/${match.id}/weather`,
-          stocks: `/api/v1/sandbox/${match.id}/stocks`,
-          news: `/api/v1/sandbox/${match.id}/news`,
-        },
+        sandbox_urls: sandboxUrls,
         submit_url: `/api/v1/matches/${match.id}/submit`,
+        ...extraUrls,
       },
       201,
       `${boutName} begins! The crowd roars. You have ${challenge.timeLimitSecs} seconds.`,
@@ -151,18 +170,31 @@ matchRoutes.post(
       return errorEnvelope(c, "Match has expired", 410, "The sands of time have run out, gladiator.");
     }
 
+    // Find challenge to look up module
+    const challenge = await db.query.challenges.findFirst({
+      where: eq(challenges.id, match.challengeId),
+    });
+    if (!challenge) {
+      return errorEnvelope(c, "Challenge not found", 500);
+    }
+    const mod = getChallenge(challenge.slug);
+    if (!mod) {
+      return errorEnvelope(c, "Challenge module not found", 500);
+    }
+
     const now = new Date();
 
-    // Generate ground truth from seed
-    const data = generateQuickdrawData(match.seed);
+    // Generate ground truth from seed via module
+    const data = mod.generateData(match.seed, challenge.config);
 
-    // Score
-    const breakdown = scoreQuickdraw({
+    // Score via module
+    const { breakdown } = mod.score({
       submission: answer,
       groundTruth: data.groundTruth,
       startedAt: match.startedAt,
       submittedAt: now,
       apiCallCount: match.apiCallLog.length,
+      checkpoints: match.checkpoints,
     });
 
     // Determine result (solo calibration)
@@ -279,6 +311,111 @@ matchRoutes.post(
   },
 );
 
+// POST /matches/:matchId/checkpoint — submit intermediate checkpoint (multi-checkpoint matches)
+const checkpointSchema = z.object({
+  data: z.record(z.unknown()),
+  phase: z.number().int().min(0).optional(),
+});
+
+matchRoutes.post(
+  "/:matchId/checkpoint",
+  authMiddleware,
+  zValidator("json", checkpointSchema),
+  async (c) => {
+    const agent = c.get("agent");
+    const matchId = c.req.param("matchId");
+    const body = c.req.valid("json");
+
+    const match = await db.query.matches.findFirst({
+      where: eq(matches.id, matchId),
+    });
+    if (!match) return errorEnvelope(c, "Match not found", 404);
+    if (match.agentId !== agent.id) return errorEnvelope(c, "Not your match", 403);
+    if (match.status !== "active") return errorEnvelope(c, "Match not active", 400);
+    if (new Date() > match.expiresAt) {
+      await db.update(matches).set({ status: "expired" }).where(eq(matches.id, matchId));
+      return errorEnvelope(c, "Match has expired", 410);
+    }
+
+    // Verify the challenge supports checkpoints
+    const challenge = await db.query.challenges.findFirst({
+      where: eq(challenges.id, match.challengeId),
+    });
+    if (!challenge || challenge.matchType !== "multi-checkpoint") {
+      return errorEnvelope(c, "This challenge does not support checkpoints", 400);
+    }
+
+    const checkpoint = {
+      phase: body.phase ?? match.checkpoints.length,
+      data: body.data,
+      ts: new Date().toISOString(),
+    };
+
+    const newCheckpoints = [...match.checkpoints, checkpoint];
+    await db
+      .update(matches)
+      .set({ checkpoints: newCheckpoints })
+      .where(eq(matches.id, matchId));
+
+    return envelope(c, {
+      match_id: matchId,
+      checkpoint_number: newCheckpoints.length,
+      phase: checkpoint.phase,
+    }, 200, "Checkpoint recorded. The next phase awaits.");
+  },
+);
+
+// POST /matches/:matchId/heartbeat — keep long-running match alive
+matchRoutes.post(
+  "/:matchId/heartbeat",
+  authMiddleware,
+  async (c) => {
+    const agent = c.get("agent");
+    const matchId = c.req.param("matchId");
+
+    const match = await db.query.matches.findFirst({
+      where: eq(matches.id, matchId),
+    });
+    if (!match) return errorEnvelope(c, "Match not found", 404);
+    if (match.agentId !== agent.id) return errorEnvelope(c, "Not your match", 403);
+    if (match.status !== "active") return errorEnvelope(c, "Match not active", 400);
+
+    // Check if truly expired (past hard deadline)
+    if (new Date() > match.expiresAt) {
+      await db.update(matches).set({ status: "expired" }).where(eq(matches.id, matchId));
+      return errorEnvelope(c, "Match has expired", 410);
+    }
+
+    // Check if heartbeat is too late (missed + grace period)
+    const challenge = await db.query.challenges.findFirst({
+      where: eq(challenges.id, match.challengeId),
+    });
+    if (challenge?.matchType === "long-running" && match.lastHeartbeatAt) {
+      const heartbeatInterval = (challenge.config as any).heartbeatIntervalSecs ?? 300; // default 5 min
+      const deadline = new Date(match.lastHeartbeatAt.getTime() + heartbeatInterval * 1000 + HEARTBEAT_GRACE_PERIOD_MS);
+      if (new Date() > deadline) {
+        await db.update(matches).set({ status: "expired" }).where(eq(matches.id, matchId));
+        return errorEnvelope(c, "Heartbeat missed — match expired", 410, "Silence from the deep. The arena moves on.");
+      }
+    }
+
+    const now = new Date();
+    await db
+      .update(matches)
+      .set({ lastHeartbeatAt: now })
+      .where(eq(matches.id, matchId));
+
+    const remainingSecs = Math.max(0, Math.round((match.expiresAt.getTime() - now.getTime()) / 1000));
+
+    return envelope(c, {
+      match_id: matchId,
+      status: "active",
+      remaining_secs: remainingSecs,
+      heartbeat_at: now.toISOString(),
+    }, 200, "Heartbeat received. The arena acknowledges your presence.");
+  },
+);
+
 // POST /matches/:matchId/reflect — write post-match reflection to memory
 const reflectSchema = z.object({
   lesson: z.string().max(500),
@@ -346,10 +483,16 @@ matchRoutes.get("/:matchId", async (c) => {
     where: eq(agents.id, match.agentId),
   });
 
+  const challenge = await db.query.challenges.findFirst({
+    where: eq(challenges.id, match.challengeId),
+  });
+
   return envelope(c, {
     id: match.id,
     bout_name: match.boutName,
     challenge_id: match.challengeId,
+    challenge_slug: challenge?.slug ?? null,
+    match_type: challenge?.matchType ?? "single",
     agent: agent
       ? { id: agent.id, name: agent.name, title: agent.title }
       : null,
@@ -359,10 +502,12 @@ matchRoutes.get("/:matchId", async (c) => {
     submission: match.submission,
     score: match.score,
     score_breakdown: match.scoreBreakdown,
+    scoring_dimensions: challenge?.scoringDimensions ?? [],
     elo_before: match.eloBefore,
     elo_after: match.eloAfter,
     elo_change: match.eloChange,
     api_call_log: match.apiCallLog,
+    checkpoints: match.checkpoints,
     flavour_text: match.flavourText,
     started_at: match.startedAt,
     submitted_at: match.submittedAt,
@@ -374,11 +519,6 @@ matchRoutes.get("/:matchId", async (c) => {
 matchRoutes.get("/", async (c) => {
   const agentId = c.req.query("agentId");
   const limit = Math.min(Number(c.req.query("limit")) || 20, 100);
-
-  const conditions = [];
-  if (agentId) {
-    conditions.push(eq(matches.agentId, agentId));
-  }
 
   const allMatches = await db.query.matches.findMany({
     where: agentId ? eq(matches.agentId, agentId) : undefined,

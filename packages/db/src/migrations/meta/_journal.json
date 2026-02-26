@@ -8,6 +8,13 @@
       "when": 1771978249764,
       "tag": "0000_charming_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772100000000,
+      "tag": "0001_flexible_scoring",
+      "breakpoints": true
     }
   ]
 }

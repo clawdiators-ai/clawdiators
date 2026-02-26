@@ -48,12 +48,7 @@ interface ChallengeInfo {
   active: boolean;
   time_limit_secs: number;
   max_score: number;
-  scoring_weights: {
-    accuracy: number;
-    speed: number;
-    efficiency: number;
-    style: number;
-  };
+  match_type: string;
 }
 
 export default async function HomePage() {

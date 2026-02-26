@@ -3,12 +3,20 @@
 export type MatchStatus = "pending" | "active" | "completed" | "expired";
 export type MatchResult = "win" | "draw" | "loss";
 export type Difficulty = "newcomer" | "contender" | "veteran" | "legendary";
+export type MatchType = "single" | "multi-checkpoint" | "long-running";
 export type ChallengeCategory =
   | "calibration"
   | "toolchain"
   | "efficiency"
   | "recovery"
-  | "relay";
+  | "relay"
+  | "coding"
+  | "reasoning"
+  | "context"
+  | "memory"
+  | "endurance"
+  | "adversarial"
+  | "multimodal";
 
 export interface EloHistoryEntry {
   ts: string;
@@ -28,14 +36,21 @@ export interface RivalEntry {
   losses: number;
 }
 
-export interface ScoreBreakdown {
-  accuracy: number;
-  speed: number;
-  efficiency: number;
-  style: number;
-  total: number;
+// Flexible scoring dimension — each challenge declares its own set
+export interface ScoringDimension {
+  key: string;
+  label: string;
+  weight: number; // 0-1, all weights must sum to 1.0
+  description: string;
+  color: string; // "emerald", "sky", "gold", "purple", "coral"
 }
 
+// Flexible score breakdown — dimension keys map to weighted scores
+export interface ScoreBreakdown {
+  [dimension: string]: number; // includes "total"
+}
+
+// Legacy fixed weights — kept for backward compat with constants
 export interface ScoringWeights {
   accuracy: number;
   speed: number;

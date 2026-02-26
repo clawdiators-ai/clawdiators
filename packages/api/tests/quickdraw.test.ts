@@ -73,7 +73,7 @@ describe("Quickdraw scoring", () => {
   const startedAt = new Date("2026-01-15T10:00:00Z");
 
   it("perfect answer gets high score", () => {
-    const result = scoreQuickdraw({
+    const { breakdown } = scoreQuickdraw({
       submission: {
         ticker: gt.target_ticker,
         close_price: gt.target_close_price,
@@ -81,30 +81,30 @@ describe("Quickdraw scoring", () => {
         sentiment: gt.target_sentiment,
         price_change_pct: gt.price_change_pct,
       },
-      groundTruth: gt,
+      groundTruth: gt as unknown as Record<string, unknown>,
       startedAt,
       submittedAt: new Date(startedAt.getTime() + 10000), // 10s
       apiCallCount: 3,
     });
 
-    expect(result.total).toBeGreaterThanOrEqual(700);
-    expect(result.accuracy).toBeGreaterThan(0);
-    expect(result.speed).toBeGreaterThan(0);
-    expect(result.efficiency).toBeGreaterThan(0);
-    expect(result.style).toBeGreaterThan(0);
+    expect(breakdown.total).toBeGreaterThanOrEqual(700);
+    expect(breakdown.accuracy).toBeGreaterThan(0);
+    expect(breakdown.speed).toBeGreaterThan(0);
+    expect(breakdown.efficiency).toBeGreaterThan(0);
+    expect(breakdown.style).toBeGreaterThan(0);
   });
 
   it("empty answer gets low score", () => {
-    const result = scoreQuickdraw({
+    const { breakdown } = scoreQuickdraw({
       submission: {},
-      groundTruth: gt,
+      groundTruth: gt as unknown as Record<string, unknown>,
       startedAt,
       submittedAt: new Date(startedAt.getTime() + 55000), // 55s
       apiCallCount: 25,
     });
 
-    expect(result.total).toBeLessThan(400);
-    expect(result.accuracy).toBe(0);
+    expect(breakdown.total).toBeLessThan(400);
+    expect(breakdown.accuracy).toBe(0);
   });
 
   it("is deterministic — same inputs produce same score", () => {
@@ -117,30 +117,30 @@ describe("Quickdraw scoring", () => {
     };
     const submittedAt = new Date(startedAt.getTime() + 15000);
 
-    const result1 = scoreQuickdraw({ submission, groundTruth: gt, startedAt, submittedAt, apiCallCount: 4 });
-    const result2 = scoreQuickdraw({ submission, groundTruth: gt, startedAt, submittedAt, apiCallCount: 4 });
+    const r1 = scoreQuickdraw({ submission, groundTruth: gt as unknown as Record<string, unknown>, startedAt, submittedAt, apiCallCount: 4 });
+    const r2 = scoreQuickdraw({ submission, groundTruth: gt as unknown as Record<string, unknown>, startedAt, submittedAt, apiCallCount: 4 });
 
-    expect(result1).toEqual(result2);
+    expect(r1).toEqual(r2);
   });
 
   it("faster submission gets higher speed score", () => {
     const submission = { ticker: gt.target_ticker };
     const fast = scoreQuickdraw({
       submission,
-      groundTruth: gt,
+      groundTruth: gt as unknown as Record<string, unknown>,
       startedAt,
       submittedAt: new Date(startedAt.getTime() + 5000),
       apiCallCount: 3,
     });
     const slow = scoreQuickdraw({
       submission,
-      groundTruth: gt,
+      groundTruth: gt as unknown as Record<string, unknown>,
       startedAt,
       submittedAt: new Date(startedAt.getTime() + 50000),
       apiCallCount: 3,
     });
 
-    expect(fast.speed).toBeGreaterThan(slow.speed);
+    expect(fast.breakdown.speed).toBeGreaterThan(slow.breakdown.speed);
   });
 
   it("fewer API calls gets higher efficiency score", () => {
@@ -149,24 +149,24 @@ describe("Quickdraw scoring", () => {
 
     const efficient = scoreQuickdraw({
       submission,
-      groundTruth: gt,
+      groundTruth: gt as unknown as Record<string, unknown>,
       startedAt,
       submittedAt,
       apiCallCount: 3,
     });
     const wasteful = scoreQuickdraw({
       submission,
-      groundTruth: gt,
+      groundTruth: gt as unknown as Record<string, unknown>,
       startedAt,
       submittedAt,
       apiCallCount: 25,
     });
 
-    expect(efficient.efficiency).toBeGreaterThan(wasteful.efficiency);
+    expect(efficient.breakdown.efficiency).toBeGreaterThan(wasteful.breakdown.efficiency);
   });
 
   it("score never exceeds MAX_SCORE (1000)", () => {
-    const result = scoreQuickdraw({
+    const { breakdown } = scoreQuickdraw({
       submission: {
         ticker: gt.target_ticker,
         close_price: gt.target_close_price,
@@ -174,12 +174,12 @@ describe("Quickdraw scoring", () => {
         sentiment: gt.target_sentiment,
         price_change_pct: gt.price_change_pct,
       },
-      groundTruth: gt,
+      groundTruth: gt as unknown as Record<string, unknown>,
       startedAt,
       submittedAt: new Date(startedAt.getTime() + 1000), // 1s
       apiCallCount: 3,
     });
 
-    expect(result.total).toBeLessThanOrEqual(1000);
+    expect(breakdown.total).toBeLessThanOrEqual(1000);
   });
 });

@@ -45,6 +45,13 @@ export const matches = pgTable("matches", {
     .default([]),
   flavourText: text("flavour_text"),
 
+  // Multi-checkpoint / long-running
+  checkpoints: jsonb("checkpoints")
+    .$type<Record<string, unknown>[]>()
+    .notNull()
+    .default([]),
+  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+
   // Timestamps
   startedAt: timestamp("started_at", { withTimezone: true })
     .notNull()

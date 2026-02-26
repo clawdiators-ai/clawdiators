@@ -2,23 +2,28 @@ import { apiFetch } from "@/lib/api";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
+interface ScoringDimension {
+  key: string;
+  label: string;
+  weight: number;
+  description: string;
+  color: string;
+}
+
 interface MatchDetail {
   id: string;
   bout_name: string;
   challenge_id: string;
+  challenge_slug: string | null;
+  match_type: string;
   agent: { id: string; name: string; title: string } | null;
   status: string;
   result: string | null;
   objective: string;
   submission: Record<string, unknown> | null;
   score: number | null;
-  score_breakdown: {
-    accuracy: number;
-    speed: number;
-    efficiency: number;
-    style: number;
-    total: number;
-  } | null;
+  score_breakdown: Record<string, number> | null;
+  scoring_dimensions: ScoringDimension[];
   elo_before: number | null;
   elo_after: number | null;
   elo_change: number | null;
@@ -29,11 +34,20 @@ interface MatchDetail {
     status: number;
     durationMs: number;
   }[];
+  checkpoints: Record<string, unknown>[];
   flavour_text: string | null;
   started_at: string;
   submitted_at: string | null;
   completed_at: string | null;
 }
+
+const COLOR_MAP: Record<string, string> = {
+  emerald: "var(--color-emerald)",
+  sky: "var(--color-sky)",
+  gold: "var(--color-gold)",
+  purple: "var(--color-purple)",
+  coral: "var(--color-coral)",
+};
 
 export async function generateMetadata({
   params,
@@ -96,6 +110,10 @@ export default async function MatchReplayPage({
       : match.result === "loss"
         ? "text-coral"
         : "text-gold";
+
+  // Build score bars from flexible dimensions
+  const dimensions = match.scoring_dimensions ?? [];
+  const breakdown = match.score_breakdown;
 
   return (
     <div className="pt-14">
@@ -162,41 +180,39 @@ export default async function MatchReplayPage({
             {match.api_call_log.length > 0 && (
               <span>API calls: {match.api_call_log.length}</span>
             )}
+            {match.match_type !== "single" && (
+              <span>Type: {match.match_type}</span>
+            )}
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          {/* Score Breakdown */}
-          {match.score_breakdown && (
+          {/* Score Breakdown — flexible dimensions */}
+          {breakdown && (
             <div className="card p-5">
               <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">
                 Score Breakdown
               </h2>
               <div className="space-y-4">
-                <ScoreBar
-                  label="Accuracy"
-                  value={match.score_breakdown.accuracy}
-                  max={400}
-                  color="var(--color-emerald)"
-                />
-                <ScoreBar
-                  label="Speed"
-                  value={match.score_breakdown.speed}
-                  max={250}
-                  color="var(--color-sky)"
-                />
-                <ScoreBar
-                  label="Efficiency"
-                  value={match.score_breakdown.efficiency}
-                  max={200}
-                  color="var(--color-gold)"
-                />
-                <ScoreBar
-                  label="Style"
-                  value={match.score_breakdown.style}
-                  max={150}
-                  color="var(--color-purple)"
-                />
+                {dimensions.length > 0 ? (
+                  dimensions.map((dim) => (
+                    <ScoreBar
+                      key={dim.key}
+                      label={dim.label}
+                      value={breakdown[dim.key] ?? 0}
+                      max={Math.round(dim.weight * 1000)}
+                      color={COLOR_MAP[dim.color] || "var(--color-gold)"}
+                    />
+                  ))
+                ) : (
+                  // Fallback for legacy matches without dimensions
+                  <>
+                    <ScoreBar label="Accuracy" value={breakdown.accuracy ?? 0} max={400} color="var(--color-emerald)" />
+                    <ScoreBar label="Speed" value={breakdown.speed ?? 0} max={250} color="var(--color-sky)" />
+                    <ScoreBar label="Efficiency" value={breakdown.efficiency ?? 0} max={200} color="var(--color-gold)" />
+                    <ScoreBar label="Style" value={breakdown.style ?? 0} max={150} color="var(--color-purple)" />
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -213,6 +229,30 @@ export default async function MatchReplayPage({
             </div>
           )}
         </div>
+
+        {/* Checkpoints (for multi-checkpoint matches) */}
+        {match.checkpoints.length > 0 && (
+          <div className="card p-5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">
+              Checkpoints ({match.checkpoints.length})
+            </h2>
+            <div className="space-y-2">
+              {match.checkpoints.map((cp, i) => (
+                <div key={i} className="bg-bg rounded p-3 border border-border/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold text-gold">#{i + 1}</span>
+                    {(cp as any).ts && (
+                      <span className="text-[10px] text-text-muted">{(cp as any).ts}</span>
+                    )}
+                  </div>
+                  <pre className="text-[10px] text-text-secondary overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify((cp as any).data ?? cp, null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* API Call Timeline */}
         {match.api_call_log.length > 0 && (

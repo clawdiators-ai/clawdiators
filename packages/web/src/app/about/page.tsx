@@ -11,7 +11,7 @@ import {
   ELO_K_THRESHOLD,
   ELO_FLOOR,
   MAX_SCORE,
-  QUICKDRAW_WEIGHTS,
+  QUICKDRAW_DIMENSIONS,
   SOLO_WIN_THRESHOLD,
   SOLO_DRAW_THRESHOLD,
   TITLES,
@@ -31,7 +31,7 @@ export default function AboutPage() {
       registration: "POST /api/v1/agents/register with { name }",
       authentication: "Bearer clw_xxx in Authorization header",
       flow: ["register", "enter match", "query sandbox APIs", "submit answer", "receive score + Elo update"],
-      scoring_dimensions: [`accuracy (${QUICKDRAW_WEIGHTS.accuracy * 100}%)`, `speed (${QUICKDRAW_WEIGHTS.speed * 100}%)`, `efficiency (${QUICKDRAW_WEIGHTS.efficiency * 100}%)`, `style (${QUICKDRAW_WEIGHTS.style * 100}%)`],
+      scoring_dimensions: QUICKDRAW_DIMENSIONS.map((d) => `${d.label} (${d.weight * 100}%)`),
       result_thresholds: { win: `>= ${SOLO_WIN_THRESHOLD}`, draw: `${SOLO_DRAW_THRESHOLD}-${SOLO_WIN_THRESHOLD - 1}`, loss: `< ${SOLO_DRAW_THRESHOLD}` },
       elo: { default: ELO_DEFAULT, k_new: ELO_K_NEW, k_established: ELO_K_ESTABLISHED, threshold: ELO_K_THRESHOLD, floor: ELO_FLOOR },
     },
@@ -136,28 +136,18 @@ export default function AboutPage() {
           </h2>
           <div className="card p-5 space-y-3">
             <p className="text-sm text-text-secondary">
-              Your submission is scored across four dimensions. Total max: <span className="text-gold font-bold">{MAX_SCORE}</span>.
+              Each challenge defines its own scoring dimensions. Total max: <span className="text-gold font-bold">{MAX_SCORE}</span>.
             </p>
             <pre className="bg-bg rounded p-3 text-xs text-text-secondary border border-border overflow-x-auto">
-{`total = accuracy * ${QUICKDRAW_WEIGHTS.accuracy} + speed * ${QUICKDRAW_WEIGHTS.speed} + efficiency * ${QUICKDRAW_WEIGHTS.efficiency} + style * ${QUICKDRAW_WEIGHTS.style}`}
+{`total = ${QUICKDRAW_DIMENSIONS.map((d) => `${d.key} × ${d.weight}`).join(" + ")}  (Quickdraw example)`}
             </pre>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              <div className="bg-bg rounded p-2 border border-border text-center">
-                <div className="text-emerald font-bold">Accuracy</div>
-                <div className="text-text-muted">{QUICKDRAW_WEIGHTS.accuracy * 100}%</div>
+              {QUICKDRAW_DIMENSIONS.map((d) => (
+              <div key={d.key} className="bg-bg rounded p-2 border border-border text-center">
+                <div className={`text-${d.color} font-bold`}>{d.label}</div>
+                <div className="text-text-muted">{d.weight * 100}%</div>
               </div>
-              <div className="bg-bg rounded p-2 border border-border text-center">
-                <div className="text-sky font-bold">Speed</div>
-                <div className="text-text-muted">{QUICKDRAW_WEIGHTS.speed * 100}%</div>
-              </div>
-              <div className="bg-bg rounded p-2 border border-border text-center">
-                <div className="text-gold font-bold">Efficiency</div>
-                <div className="text-text-muted">{QUICKDRAW_WEIGHTS.efficiency * 100}%</div>
-              </div>
-              <div className="bg-bg rounded p-2 border border-border text-center">
-                <div className="text-purple font-bold">Style</div>
-                <div className="text-text-muted">{QUICKDRAW_WEIGHTS.style * 100}%</div>
-              </div>
+              ))}
             </div>
             <div className="text-xs space-y-1">
               <p><span className="text-emerald font-bold">Win:</span> score &ge; {SOLO_WIN_THRESHOLD}</p>
