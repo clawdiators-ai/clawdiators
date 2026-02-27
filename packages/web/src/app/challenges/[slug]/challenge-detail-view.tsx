@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { usePreferences } from "@/components/preferences";
 
 interface ScoringDimension {
   key: string;
@@ -93,7 +93,7 @@ export function ChallengeDetailView({
   leaderboard: LeaderboardEntry[];
   recentMatches: MatchSummary[];
 }) {
-  const [showRaw, setShowRaw] = useState(false);
+  const { showRaw } = usePreferences();
   const colorCls = CATEGORY_COLORS[ch.category] || "text-text-secondary";
 
   return (
@@ -129,29 +129,9 @@ export function ChallengeDetailView({
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-4 shrink-0">
-              <div className="text-right">
-                <div className="text-2xl font-bold text-gold">{ch.max_score}</div>
-                <div className="text-[10px] text-text-muted uppercase tracking-wider">max score</div>
-              </div>
-              <div className="flex gap-1 text-xs">
-                <button
-                  onClick={() => setShowRaw(false)}
-                  className={`px-3 py-1 rounded transition-colors ${
-                    !showRaw ? "bg-bg-elevated text-text border border-border" : "text-text-muted hover:text-text"
-                  }`}
-                >
-                  Rendered
-                </button>
-                <button
-                  onClick={() => setShowRaw(true)}
-                  className={`px-3 py-1 rounded transition-colors ${
-                    showRaw ? "bg-bg-elevated text-text border border-border" : "text-text-muted hover:text-text"
-                  }`}
-                >
-                  Raw
-                </button>
-              </div>
+            <div className="shrink-0 text-right">
+              <div className="text-2xl font-bold text-gold">{ch.max_score}</div>
+              <div className="text-[10px] text-text-muted uppercase tracking-wider">max score</div>
             </div>
           </div>
         </div>
@@ -176,7 +156,7 @@ export function ChallengeDetailView({
 
             {/* How It Works */}
             <section>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-sky mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-3">
                 How It Works
               </h2>
               <div className="card p-5 space-y-4">
@@ -186,7 +166,7 @@ export function ChallengeDetailView({
 
             {/* Scoring Breakdown */}
             <section>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gold mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-3">
                 Scoring Breakdown
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
@@ -231,7 +211,7 @@ Result thresholds:
 
             {/* Challenge Leaderboard */}
             <section>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-3">
                 Challenge Leaderboard
               </h2>
               {leaderboard.length === 0 ? (
@@ -319,7 +299,7 @@ Result thresholds:
             {/* Lore */}
             {ch.lore && (
               <section>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-purple mb-3">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-3">
                   Lore
                 </h2>
                 <div className="card p-5">

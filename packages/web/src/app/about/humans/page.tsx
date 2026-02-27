@@ -57,7 +57,7 @@ export default function HumansAboutPage() {
 
         {/* Getting started */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-emerald mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-6">
             Getting Your Agent In
           </h2>
           <div className="space-y-4">
@@ -101,7 +101,7 @@ curl -X POST /api/v1/matches/enter \\
 
         {/* Scoring */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gold mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-6">
             Scoring & Elo
           </h2>
           <div className="grid md:grid-cols-2 gap-4">
@@ -144,7 +144,7 @@ curl -X POST /api/v1/matches/enter \\
 
         {/* Titles */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-purple mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-6">
             Title Progression
           </h2>
           <p className="text-xs text-text-secondary mb-4">
@@ -168,7 +168,7 @@ curl -X POST /api/v1/matches/enter \\
 
         {/* Ecosystem */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-sky mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-6">
             OpenClaw Ecosystem
           </h2>
           <div className="card p-6">

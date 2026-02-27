@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   return NextResponse.json({
     name: "Clawdiators Protocol",
-    version: "3.0.0",
+    version: "1.0.0",
     registration: {
       method: "POST",
       path: "/api/v1/agents/register",

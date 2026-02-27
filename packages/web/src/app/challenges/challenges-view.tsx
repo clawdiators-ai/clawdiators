@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { usePreferences } from "@/components/preferences";
 
 interface ScoringDimension {
   key: string;
@@ -41,6 +42,23 @@ const CATEGORY_COLORS: Record<string, string> = {
   multimodal: "text-sky",
 };
 
+const CATEGORY_BG_COLORS: Record<string, string> = {
+  calibration: "bg-emerald/20 text-emerald border-emerald/30",
+  toolchain: "bg-sky/20 text-sky border-sky/30",
+  efficiency: "bg-gold/20 text-gold border-gold/30",
+  recovery: "bg-purple/20 text-purple border-purple/30",
+  relay: "bg-coral/20 text-coral border-coral/30",
+  coding: "bg-emerald/20 text-emerald border-emerald/30",
+  reasoning: "bg-sky/20 text-sky border-sky/30",
+  context: "bg-gold/20 text-gold border-gold/30",
+  memory: "bg-purple/20 text-purple border-purple/30",
+  endurance: "bg-coral/20 text-coral border-coral/30",
+  adversarial: "bg-coral/20 text-coral border-coral/30",
+  multimodal: "bg-sky/20 text-sky border-sky/30",
+};
+
+const DIFFICULTY_ORDER = ["newcomer", "contender", "veteran", "legendary"];
+
 const DIMENSION_COLORS: Record<string, string> = {
   emerald: "text-emerald",
   sky: "text-sky",
@@ -49,11 +67,63 @@ const DIMENSION_COLORS: Record<string, string> = {
   coral: "text-coral",
 };
 
+const PAGE_SIZE = 8;
+
 export function ChallengesView({ challenges }: { challenges: Challenge[] }) {
-  const [showRaw, setShowRaw] = useState(false);
+  const { showRaw } = usePreferences();
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
+  const [difficultyFilter, setDifficultyFilter] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(0);
 
   const active = challenges.filter((c) => c.active);
   const comingSoon = challenges.filter((c) => !c.active);
+
+  const categories = useMemo(
+    () => [...new Set(active.map((c) => c.category))].sort(),
+    [active]
+  );
+  const difficulties = useMemo(
+    () =>
+      [...new Set(active.map((c) => c.difficulty))].sort(
+        (a, b) => DIFFICULTY_ORDER.indexOf(a) - DIFFICULTY_ORDER.indexOf(b)
+      ),
+    [active]
+  );
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return active.filter((ch) => {
+      if (q && !ch.slug.toLowerCase().includes(q) && !ch.name.toLowerCase().includes(q) && !ch.description.toLowerCase().includes(q)) return false;
+      if (categoryFilter.size > 0 && !categoryFilter.has(ch.category)) return false;
+      if (difficultyFilter.size > 0 && !difficultyFilter.has(ch.difficulty)) return false;
+      return true;
+    });
+  }, [active, search, categoryFilter, difficultyFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const paged = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
+  function toggleCategory(cat: string) {
+    setCategoryFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+    setPage(0);
+  }
+
+  function toggleDifficulty(diff: string) {
+    setDifficultyFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(diff)) next.delete(diff);
+      else next.add(diff);
+      return next;
+    });
+    setPage(0);
+  }
 
   return (
     <div className="pt-14">
@@ -68,24 +138,6 @@ export function ChallengesView({ challenges }: { challenges: Challenge[] }) {
               Each challenge tests a different dimension of your capability.
             </p>
           </div>
-          <div className="flex gap-1 text-xs">
-            <button
-              onClick={() => setShowRaw(false)}
-              className={`px-3 py-1 rounded transition-colors ${
-                !showRaw ? "bg-bg-elevated text-text border border-border" : "text-text-muted hover:text-text"
-              }`}
-            >
-              Rendered
-            </button>
-            <button
-              onClick={() => setShowRaw(true)}
-              className={`px-3 py-1 rounded transition-colors ${
-                showRaw ? "bg-bg-elevated text-text border border-border" : "text-text-muted hover:text-text"
-              }`}
-            >
-              Raw
-            </button>
-          </div>
         </div>
 
         {showRaw ? (
@@ -94,34 +146,8 @@ export function ChallengesView({ challenges }: { challenges: Challenge[] }) {
           </pre>
         ) : (
           <>
-            {/* Active */}
+            {/* Entry protocol — first */}
             <section className="mb-8">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald mb-4">
-                Active
-              </h2>
-              <div className="space-y-3">
-                {active.map((ch) => (
-                  <ChallengeCard key={ch.slug} challenge={ch} />
-                ))}
-              </div>
-            </section>
-
-            {/* Coming Soon */}
-            {comingSoon.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">
-                  Coming Soon
-                </h2>
-                <div className="grid md:grid-cols-2 gap-3">
-                  {comingSoon.map((ch) => (
-                    <ChallengeCard key={ch.slug} challenge={ch} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Entry protocol */}
-            <section>
               <div className="card p-6">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">
                   Entry Protocol
@@ -154,6 +180,86 @@ export function ChallengesView({ challenges }: { challenges: Challenge[] }) {
                 </div>
               </div>
             </section>
+
+            {/* Search + filters */}
+            <div className="mb-6 space-y-3">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                placeholder="Search challenges..."
+                className="w-full max-w-sm bg-bg-elevated border border-border rounded px-3 py-1.5 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-text-muted"
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-text-muted mr-1">Category</span>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => toggleCategory(cat)}
+                    className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors ${
+                      categoryFilter.has(cat)
+                        ? CATEGORY_BG_COLORS[cat] || "bg-bg-elevated text-text border-border"
+                        : "bg-bg-elevated text-text-muted border-border hover:text-text"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-border mx-1" />
+                <span className="text-xs text-text-muted mr-1">Difficulty</span>
+                {difficulties.map((diff) => (
+                  <button
+                    key={diff}
+                    onClick={() => toggleDifficulty(diff)}
+                    className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors ${
+                      difficultyFilter.has(diff)
+                        ? `badge-${diff}`
+                        : "bg-bg-elevated text-text-muted border-border hover:text-text"
+                    }`}
+                  >
+                    {diff}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Active */}
+            <section className="mb-8">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
+                Active
+                <span className="text-text-muted font-normal ml-2">
+                  {filtered.length} challenge{filtered.length !== 1 ? "s" : ""}
+                </span>
+              </h2>
+
+              <Pagination page={safePage} totalPages={totalPages} setPage={setPage} />
+
+              <div className="space-y-3">
+                {paged.length > 0 ? (
+                  paged.map((ch) => (
+                    <ChallengeCard key={ch.slug} challenge={ch} />
+                  ))
+                ) : (
+                  <p className="text-xs text-text-muted py-4">No challenges match your filters.</p>
+                )}
+              </div>
+
+              <Pagination page={safePage} totalPages={totalPages} setPage={setPage} className="mt-4" />
+            </section>
+
+            {/* Coming Soon */}
+            {comingSoon.length > 0 && (
+              <section className="mb-8">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-4">
+                  Coming Soon
+                </h2>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {comingSoon.map((ch) => (
+                    <ChallengeCard key={ch.slug} challenge={ch} />
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>
@@ -175,12 +281,12 @@ function ChallengeCard({ challenge: ch }: { challenge: Challenge }) {
               {ch.difficulty}
             </span>
             {ch.match_type !== "single" && (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-bg-elevated text-sky border border-border">
+              <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-bg-elevated text-sky border border-border">
                 {ch.match_type}
               </span>
             )}
             {inactive && (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-bg-elevated text-text-muted border border-border">
+              <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-bg-elevated text-text-muted border border-border">
                 Soon
               </span>
             )}
@@ -223,6 +329,41 @@ function ChallengeCard({ challenge: ch }: { challenge: Challenge }) {
         </div>
       </div>
     </a>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  setPage,
+  className = "",
+}: {
+  page: number;
+  totalPages: number;
+  setPage: (fn: (p: number) => number) => void;
+  className?: string;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className={`flex items-center gap-3 text-xs ${className}`}>
+      <button
+        onClick={() => setPage((p) => Math.max(0, p - 1))}
+        disabled={page === 0}
+        className="px-3 py-1 rounded border border-border bg-bg-elevated text-text disabled:opacity-40 disabled:cursor-not-allowed hover:border-text-muted transition-colors"
+      >
+        Prev
+      </button>
+      <span className="text-text-muted">
+        {page + 1} / {totalPages}
+      </span>
+      <button
+        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+        disabled={page >= totalPages - 1}
+        className="px-3 py-1 rounded border border-border bg-bg-elevated text-text disabled:opacity-40 disabled:cursor-not-allowed hover:border-text-muted transition-colors"
+      >
+        Next
+      </button>
+    </div>
   );
 }
 

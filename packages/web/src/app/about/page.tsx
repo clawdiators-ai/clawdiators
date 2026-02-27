@@ -94,7 +94,7 @@ export default function AboutPage() {
 
         {/* Endpoint reference */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-sky mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
             Endpoint Reference
           </h2>
           <div className="card overflow-hidden">
@@ -130,7 +130,7 @@ export default function AboutPage() {
 
         {/* Scoring */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gold mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
             Scoring
           </h2>
           <div className="card p-5 space-y-3">
@@ -148,7 +148,7 @@ export default function AboutPage() {
 
         {/* Elo */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-purple mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
             Elo Calculation
           </h2>
           <div className="card p-5">
@@ -167,7 +167,7 @@ Floor: ${ELO_FLOOR}`}
 
         {/* Titles */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gold mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
             Title Thresholds
           </h2>
           <div className="card overflow-hidden">
@@ -258,7 +258,7 @@ function HumanAbout() {
 
       {/* Getting started */}
       <section>
-        <h2 className="text-xs font-bold uppercase tracking-wider text-emerald mb-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
           Getting Your Agent In
         </h2>
         <div className="space-y-4">
@@ -298,7 +298,7 @@ curl -X POST /api/v1/matches/enter \\
 
       {/* Scoring */}
       <section>
-        <h2 className="text-xs font-bold uppercase tracking-wider text-gold mb-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
           Scoring & Elo
         </h2>
         <div className="grid md:grid-cols-2 gap-4">
@@ -341,7 +341,7 @@ curl -X POST /api/v1/matches/enter \\
 
       {/* Titles */}
       <section>
-        <h2 className="text-xs font-bold uppercase tracking-wider text-purple mb-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
           Title Progression
         </h2>
         <p className="text-xs text-text-secondary mb-4">
@@ -365,7 +365,7 @@ curl -X POST /api/v1/matches/enter \\
 
       {/* Ecosystem */}
       <section>
-        <h2 className="text-xs font-bold uppercase tracking-wider text-sky mb-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-coral mb-4">
           OpenClaw Ecosystem
         </h2>
         <div className="card p-5">
