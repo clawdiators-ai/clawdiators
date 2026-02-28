@@ -1,5 +1,6 @@
 import { eq, and, sql, desc } from "drizzle-orm";
 import { db, matches, challengeAnalytics } from "@clawdiators/db";
+import type { BenchmarkMetrics } from "@clawdiators/shared";
 
 function median(sorted: number[]): number {
   if (sorted.length === 0) return 0;
@@ -150,6 +151,83 @@ export async function computeChallengeAnalytics(challengeId: string) {
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  // ── Benchmark Metrics Suite ──────────────────────────────────────
+  // See docs/scoring-methodology.md for definitions
+
+  // Group scores by agent + attempt number
+  const agentAttempts: Record<string, { attempt: number; score: number; result: string }[]> = {};
+  for (const m of allMatches) {
+    const attempt = m.attemptNumber ?? 1;
+    if (m.score !== null) {
+      if (!agentAttempts[m.agentId]) agentAttempts[m.agentId] = [];
+      agentAttempts[m.agentId].push({ attempt, score: m.score, result: m.result ?? "loss" });
+    }
+  }
+
+  // Score by attempt number (learning curve)
+  const byAttempt: Record<number, number[]> = {};
+  for (const entries of Object.values(agentAttempts)) {
+    for (const e of entries) {
+      if (!byAttempt[e.attempt]) byAttempt[e.attempt] = [];
+      byAttempt[e.attempt].push(e.score);
+    }
+  }
+  const scoreByAttemptNumber: Record<string, { mean: number; median: number; count: number }> = {};
+  for (const [attempt, attemptScores] of Object.entries(byAttempt)) {
+    const sorted = [...attemptScores].sort((a, b) => a - b);
+    scoreByAttemptNumber[attempt] = {
+      mean: Math.round((sorted.reduce((a, b) => a + b, 0) / sorted.length) * 10) / 10,
+      median: median(sorted),
+      count: sorted.length,
+    };
+  }
+
+  // pass@1: P(first attempt wins)
+  const firstAttempts = Object.values(agentAttempts)
+    .map(entries => entries.find(e => e.attempt === 1))
+    .filter(Boolean) as { attempt: number; score: number; result: string }[];
+  const passAt1 = firstAttempts.length > 0
+    ? firstAttempts.filter(e => e.result === "win").length / firstAttempts.length
+    : null;
+
+  // best-of-k: mean of max(first k attempts) per agent
+  function bestOfK(k: number): number | null {
+    const eligible = Object.values(agentAttempts).filter(
+      entries => entries.filter(e => e.attempt <= k).length >= 1,
+    );
+    if (eligible.length < 3) return null; // need min 3 agents
+    const bests = eligible.map(entries =>
+      Math.max(...entries.filter(e => e.attempt <= k).map(e => e.score)),
+    );
+    return Math.round((bests.reduce((a, b) => a + b, 0) / bests.length) * 10) / 10;
+  }
+
+  // pass^k: P(all first k attempts win)
+  function passExpK(k: number): number | null {
+    const eligible = Object.values(agentAttempts).filter(
+      entries => entries.filter(e => e.attempt <= k).length >= k,
+    );
+    if (eligible.length < 3) return null;
+    const allWin = eligible.filter(entries =>
+      entries.filter(e => e.attempt <= k).every(e => e.result === "win"),
+    );
+    return Math.round((allWin.length / eligible.length) * 1000) / 1000;
+  }
+
+  const benchmarkMetrics: BenchmarkMetrics = {
+    pass_at_1: passAt1 !== null ? Math.round(passAt1 * 1000) / 1000 : undefined,
+    best_of_3: bestOfK(3) ?? undefined,
+    best_of_5: bestOfK(5) ?? undefined,
+    pass_k_3: passExpK(3) ?? undefined,
+    pass_k_5: passExpK(5) ?? undefined,
+    learning_curve: {
+      attempt_1_mean: scoreByAttemptNumber["1"]?.mean,
+      attempt_2_mean: scoreByAttemptNumber["2"]?.mean,
+      attempt_3_mean: scoreByAttemptNumber["3"]?.mean,
+    },
+    agents_sampled: Object.keys(agentAttempts).length,
+  };
+
   const analyticsData = {
     challengeId,
     computedAt: new Date(),
@@ -168,6 +246,8 @@ export async function computeChallengeAnalytics(challengeId: string) {
     scoreByModel,
     scoreByVariant,
     scoreTrend,
+    scoreByAttemptNumber,
+    benchmarkMetrics,
   };
 
   // Upsert

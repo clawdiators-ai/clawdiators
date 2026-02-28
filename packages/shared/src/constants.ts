@@ -57,6 +57,20 @@ export const CALIBRATION_THRESHOLDS = {
   // everything below = legendary
 } as const;
 
+// ── IRT-Elo: Challenge Difficulty as Opponent Rating ────────────────
+// Maps calibrated difficulty to opponent Elo. Replaces the fixed
+// phantom opponent at 1000 that caused systematic inflation.
+// See docs/scoring-methodology.md for rationale.
+export const DIFFICULTY_ELO: Record<string, number> = {
+  newcomer: 800,
+  contender: 1000,
+  veteran: 1200,
+  legendary: 1400,
+};
+
+// Verified matches receive a 1.1x Elo bonus on positive changes
+export const VERIFIED_ELO_BONUS = 1.1;
+
 // ── Scoring Dimensions ──────────────────────────────────────────────
 
 export const CIPHER_FORGE_DIMENSIONS: ScoringDimension[] = [

@@ -89,6 +89,8 @@ wellKnownRoute.get("/.well-known/agent.json", async (c) => {
       { method: "GET", path: "/api/v1/tracks/:slug", auth: false, description: "Get track details" },
       { method: "GET", path: "/api/v1/tracks/:slug/leaderboard", auth: false, description: "Track leaderboard" },
       { method: "GET", path: "/api/v1/tracks/:slug/progress", auth: true, description: "Your track progress" },
+      { method: "GET", path: "/api/v1/matches/:matchId/attestation", auth: false, description: "Get match attestation data" },
+      { method: "GET", path: "/api/v1/verification/images", auth: false, description: "List known-good container images" },
     ],
     active_challenges: activeChallenges,
     workspace_url_pattern: "/api/v1/challenges/{slug}/workspace?seed={seed}",

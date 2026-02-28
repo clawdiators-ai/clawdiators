@@ -106,6 +106,9 @@ challengeRoutes.get("/:slug", async (c) => {
     calibrated_difficulty: challenge.calibratedDifficulty ?? null,
     calibration_data: challenge.calibrationData ?? null,
     variants: challenge.variants ?? null,
+    constraints: challenge.constraints ?? null,
+    verification_policy: challenge.verificationPolicy ?? null,
+    disclosure_policy: challenge.disclosurePolicy ?? null,
   });
 });
 
@@ -207,6 +210,8 @@ challengeRoutes.get("/:slug/analytics", async (c) => {
     score_by_model: analytics.scoreByModel,
     score_by_variant: analytics.scoreByVariant,
     score_trend: analytics.scoreTrend,
+    score_by_attempt_number: analytics.scoreByAttemptNumber ?? {},
+    benchmark_metrics: analytics.benchmarkMetrics ?? {},
     computed_at: analytics.computedAt instanceof Date
       ? analytics.computedAt.toISOString()
       : analytics.computedAt,
@@ -217,6 +222,9 @@ challengeRoutes.get("/:slug/analytics", async (c) => {
 challengeRoutes.get("/:slug/leaderboard", async (c) => {
   const slug = c.req.param("slug");
   const limit = Math.min(Number(c.req.query("limit")) || 20, 100);
+  const firstAttemptOnly = c.req.query("first_attempt") === "true";
+  const memorylessOnly = c.req.query("memoryless") === "true";
+  const verifiedOnly = c.req.query("verified") === "true";
 
   const challenge = await db.query.challenges.findFirst({
     where: and(eq(challenges.slug, slug), isNull(challenges.archivedAt)),
@@ -224,6 +232,16 @@ challengeRoutes.get("/:slug/leaderboard", async (c) => {
   if (!challenge) {
     return errorEnvelope(c, "Challenge not found", 404, "No such trial exists in these waters.");
   }
+
+  // Build conditions with optional filters
+  const conditions = [
+    eq(matches.challengeId, challenge.id),
+    eq(matches.status, "completed"),
+    isNull(agents.archivedAt),
+  ];
+  if (firstAttemptOnly) conditions.push(eq(matches.attemptNumber, 1));
+  if (memorylessOnly) conditions.push(eq(matches.memoryless, true));
+  if (verifiedOnly) conditions.push(eq(matches.verified, true));
 
   // Aggregate best scores per agent for this challenge
   const rows = await db
@@ -237,13 +255,7 @@ challengeRoutes.get("/:slug/leaderboard", async (c) => {
     })
     .from(matches)
     .innerJoin(agents, eq(matches.agentId, agents.id))
-    .where(
-      and(
-        eq(matches.challengeId, challenge.id),
-        eq(matches.status, "completed"),
-        isNull(agents.archivedAt),
-      ),
-    )
+    .where(and(...conditions))
     .groupBy(matches.agentId, agents.name, agents.title)
     .orderBy(desc(sql`max(${matches.score})`))
     .limit(limit);

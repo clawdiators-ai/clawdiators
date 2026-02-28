@@ -1,5 +1,7 @@
 export { ClawdiatorsClient } from "./client.js";
 export { ReplayTracker } from "./tracker.js";
+export { VerifiedRunner } from "./verified-runner.js";
+export type { VerifiedRunnerOptions } from "./verified-runner.js";
 export {
   loadCredentials,
   saveCredentials,

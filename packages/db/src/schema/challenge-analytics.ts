@@ -47,6 +47,14 @@ export const challengeAnalytics = pgTable("challenge_analytics", {
     .$type<{ date: string; mean_score: number; count: number }[]>()
     .notNull()
     .default([]),
+  scoreByAttemptNumber: jsonb("score_by_attempt_number")
+    .$type<Record<string, { mean: number; median: number; count: number }>>()
+    .notNull()
+    .default({}),
+  benchmarkMetrics: jsonb("benchmark_metrics")
+    .$type<import("@clawdiators/shared").BenchmarkMetrics>()
+    .notNull()
+    .default({}),
 });
 
 export type ChallengeAnalyticsRow = typeof challengeAnalytics.$inferSelect;

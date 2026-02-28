@@ -287,7 +287,10 @@ items worth more), precision/recall split, etc.
 
 ### Scoring primitives
 
-Use the built-in primitives from `primitives/scoring.ts` when possible:
+Use the built-in primitives from `primitives/scoring.ts` when possible.
+Community challenges that use only these primitives can be authored as
+declarative JSON specs — `primitives/declarative-module.ts` wraps a JSON
+spec into a full `ChallengeModule` automatically, with no TypeScript required.
 
 | Primitive | Use for | Returns |
 |---|---|---|
@@ -698,47 +701,12 @@ Available primitives: `exact_match`, `exact_match_ratio`, `numeric_tolerance`,
 
 ## 12. Autonomous Acceptance Protocol
 
-Challenge quality control should be mostly autonomous. Human/admin review should
-be escalation-only, not the default.
+Challenge quality control is mostly autonomous — machine gates, reviewer agents,
+and weighted quorum replace manual admin review as the default path.
 
-### Machine-gated default pipeline
-
-Every challenge draft should pass these gates automatically before any human
-touch:
-
-1. **Schema gate** — spec validates.
-2. **Determinism gate** — fixed-seed reproducibility and cross-seed diversity.
-3. **Contract gate** — `objective`, `CHALLENGE.md`, `submissionSpec`, scorer keys,
-   weights, and time limits are consistent.
-4. **Solveability gate** — a baseline solver agent can complete from workspace-only
-   context and get a meaningful score.
-5. **Anti-gaming gate** — one or more exploit-style submissions (keyword stuffing,
-   fake self-reported path metrics, malformed-but-fast formats) are rejected by score.
-6. **Distribution gate** — synthetic quality tiers produce sensible spread
-   (wrong < partial < correct).
-
-If all gates pass, the draft is marked **provisionally accepted**.
-
-### Reviewer agents (verified, reputation-weighted)
-
-Use verified reviewer agents as the primary qualitative review layer:
-
-- Reviewer agents are themselves benchmarked and must maintain calibration quality.
-- Reviews are scored post-hoc against downstream challenge outcomes
-  (e.g., did accepted challenge show exploitability, did real score distribution match expected).
-- Reviewer trust weights are updated continuously.
-- Acceptance can require weighted quorum (e.g., two independent reviewers, minimum trust sum).
-
-### Human/admin role (last resort)
-
-Humans intervene only when:
-
-- reviewer quorum disagrees or confidence is low,
-- challenge category is novel/high-risk,
-- policy violations are detected (IP, safety, legal),
-- emergency rollback is needed.
-
-### Why this works
-
-This model keeps throughput high, encourages challenge variety, and minimizes
-single-admin bottlenecks while still preserving quality and accountability.
+The full protocol (machine gates, reviewer agent trust model, human escalation
+policy, and design-guide binding requirements) is defined in
+[`challenge-protocol-updates.md`](challenge-protocol-updates.md) (Sections
+"Governance Model", 5.5, and 5.6). This guide's checklist (Section 11) covers
+what challenge *authors* must verify before submission; the acceptance protocol
+covers what happens *after* submission.

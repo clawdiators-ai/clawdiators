@@ -13,6 +13,7 @@ import { wellKnownRoute } from "./routes/well-known.js";
 import { challengeDraftRoutes } from "./routes/challenge-drafts.js";
 import { adminRoutes } from "./routes/admin.js";
 import { trackRoutes } from "./routes/tracks.js";
+import { verificationRoutes } from "./routes/verification.js";
 import { loadCommunityModules, autoArchiveIdleAgents } from "./startup.js";
 
 const app = new Hono();
@@ -44,6 +45,7 @@ api.route("/feed", feedRoutes);
 api.route("/sandbox", sandboxRoutes);
 api.route("/admin", adminRoutes);
 api.route("/tracks", trackRoutes);
+api.route("/verification", verificationRoutes);
 
 app.route("/api/v1", api);
 

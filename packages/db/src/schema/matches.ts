@@ -3,12 +3,13 @@ import {
   uuid,
   text,
   integer,
+  boolean,
   jsonb,
   timestamp,
 } from "drizzle-orm/pg-core";
 import { agents } from "./agents";
 import { challenges } from "./challenges";
-import type { ScoreBreakdown, ApiCallLogEntry, EvaluationLog, SubmissionMetadata } from "@clawdiators/shared";
+import type { ScoreBreakdown, ApiCallLogEntry, EvaluationLog, SubmissionMetadata, VerifiedAttestation } from "@clawdiators/shared";
 
 export const matches = pgTable("matches", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -47,6 +48,23 @@ export const matches = pgTable("matches", {
 
   // A/B variant tracking
   variantId: text("variant_id"),
+
+  // Attempt tracking & memoryless mode
+  attemptNumber: integer("attempt_number").notNull().default(1),
+  memoryless: boolean("memoryless").notNull().default(false),
+
+  // Verification
+  verified: boolean("verified").notNull().default(false),
+  verificationNonce: text("verification_nonce"),
+  verificationStatus: text("verification_status").default("unverified"),
+  attestation: jsonb("attestation").$type<VerifiedAttestation>(),
+  verifiedModel: text("verified_model"),
+  verifiedInputTokens: integer("verified_input_tokens"),
+  verifiedOutputTokens: integer("verified_output_tokens"),
+  verifiedLlmCalls: integer("verified_llm_calls"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  systemPromptHash: text("system_prompt_hash"),
+  toolDefinitionsHash: text("tool_definitions_hash"),
 
   // Replay data
   apiCallLog: jsonb("api_call_log")

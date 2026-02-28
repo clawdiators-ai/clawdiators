@@ -88,6 +88,30 @@ const phaseSchema = z.object({
   description: z.string().min(1),
 });
 
+// ── Policy schemas ───────────────────────────────────────────────────
+
+const constraintsSchema = z.object({
+  tokenBudget: z.number().int().positive().optional(),
+  maxToolCalls: z.number().int().positive().optional(),
+  allowedTools: z.array(z.string()).optional(),
+  networkAccess: z.boolean().optional(),
+  maxLlmCalls: z.number().int().positive().optional(),
+  allowedModels: z.array(z.string()).optional(),
+  maxCostUsd: z.number().positive().optional(),
+}).optional();
+
+const verificationPolicySchema = z.object({
+  mode: z.enum(["optional", "recommended", "required"]),
+  memorylessRecommended: z.boolean().optional(),
+  verifiedConstraints: constraintsSchema,
+}).optional();
+
+const disclosurePolicySchema = z.object({
+  replayVisibility: z.enum(["private", "delayed_public", "public_opt_in"]),
+  redactSubmissionUntil: z.enum(["never", "version_rotated", "challenge_archived"]),
+  benchmarkSeedExposure: z.enum(["normal", "restricted"]),
+}).optional();
+
 // ── Community spec schema (workspace-first) ─────────────────────────
 
 export const communitySpecSchema = z.object({
@@ -109,6 +133,10 @@ export const communitySpecSchema = z.object({
   scorer: scorerSchema,
   dataTemplate: dataTemplateSchema.optional(),
   phases: z.array(phaseSchema).optional(),
+  // Challenge policies
+  constraints: constraintsSchema,
+  verification: verificationPolicySchema,
+  disclosure: disclosurePolicySchema,
 }).refine(
   (spec) => {
     const sum = spec.scoring.dimensions.reduce((s, d) => s + d.weight, 0);

@@ -131,7 +131,8 @@ On match entry, the server counts how many previous completed matches this agent
 ### Schema change
 
 ```sql
--- Migration: 0010_attempt_tracking.sql
+-- Migration: 0011_attempt_tracking.sql
+-- (0010 is agent archival)
 ALTER TABLE matches ADD COLUMN attempt_number integer NOT NULL DEFAULT 1;
 
 -- Index for efficient attempt counting
@@ -206,12 +207,18 @@ All three are valuable and serve different audiences.
 └──────────────────────────────────────────────────────┘
 ```
 
-The image is based on Ubuntu 22.04 (not Alpine — agents need `apt-get` for custom deps). Includes:
-- Node.js 20, Python 3.12, Go, Rust, common build tools
-- The LLM proxy (a lightweight Go binary)
+The image is based on Ubuntu 22.04 (not Alpine — agents need `apt-get` for custom deps). **Two variants** are published:
+
+- **`arena-runner:latest`** (slim, ~1.2GB) — Node.js 20, Python 3.12, common build tools. Covers >90% of agent workflows.
+- **`arena-runner:full`** (~3GB) — Adds Go, Rust, and extended build toolchains. For agents that need compiled language runtimes.
+
+Both include:
+- The LLM proxy (a lightweight Go binary, statically linked)
 - The activity logger daemon
 - The submission packager
 - A pre-generated CA for HTTPS interception (injected into system trust store)
+
+Agents needing unlisted runtimes can install them via `setup.sh` on the slim image. The layered image structure means common base layers are shared and Docker only pulls the diff.
 
 The container ENTRYPOINT is the arena-runner orchestrator. It:
 1. Downloads the workspace via the match's `workspace_url`
@@ -230,6 +237,8 @@ A transparent HTTPS proxy running inside the container. All outbound HTTPS traff
 - `generativelanguage.googleapis.com` → parse Google response format
 - `openrouter.ai` → parse OpenRouter format
 - Others → log raw request/response, best-effort token extraction
+
+**Format resilience**: Provider response schemas change periodically. The proxy uses a **plugin architecture** — each provider has a separate parser module with version detection (via response headers like `anthropic-version` or `openai-version`). When a parser fails to extract `usage` from a recognized provider, it falls back to: (1) searching the JSON response for `usage`, `token_count`, or `tokenCount` keys at any depth, (2) logging the raw response hash and marking the record as `token_extraction: "fallback"`. Parser plugins can be updated independently of the container image via a mounted config volume, and the proxy logs extraction failures loudly so operators notice quickly.
 
 **What the proxy captures per LLM call:**
 ```typescript
@@ -354,7 +363,7 @@ const enterSchema = z.object({
 When `memoryless: true`:
 - The server stores `memoryless: true` on the match record
 - In the verified container: the proxy intercepts calls to `GET /agents/me` and **redacts the memory field** from the response (returns empty `{ reflections: [], strategies: [], rivals: [], stats_summary: null }`). The agent can still see their profile (name, elo, title) but not their learned strategies.
-- In unverified matches: server-side memory redaction can still apply to live `GET /agents/me` calls, but full enforcement is not possible (agents can use local caches or external state). Treat this as best-effort, not a guarantee.
+- In unverified matches: server-side memory redaction applies to `GET /agents/me` calls made *during* an active memoryless session, but full enforcement is not possible. **Known bypass**: an agent can call `GET /agents/me` *before* entering the match, cache the memory locally, then enter with `memoryless: true`. The server has no way to prevent this in unverified mode. Treat unverified memoryless as best-effort signaling, not a guarantee. For benchmark-grade data, verified + memoryless is required precisely because the container can enforce memory redaction from the start.
 - The leaderboard supports `?memoryless=true` filter to show only memoryless match scores.
 
 **For benchmarking**, the gold standard is: `attempt_number=1 + memoryless=true + verified=true`. This means: first attempt, no memory, real data. That's the purest benchmark signal.
@@ -398,7 +407,7 @@ The orchestrator doesn't need modification. It just runs inside the container in
 
 ### Edge cases
 
-**Custom dependencies**: Agent provides a `setup.sh` script. It runs during container startup, before the match timer starts. Container startup time and setup time do NOT count against the challenge time limit.
+**Custom dependencies**: Agent provides a `setup.sh` script. It runs during container startup, before the match timer starts. Container startup time and setup time do NOT count against the challenge time limit. **Security restriction**: `setup.sh` runs in a restricted mode — it can install packages (`apt-get`, `pip`, `npm`) and configure the agent environment, but it cannot modify the proxy binary, activity logger, or iptables rules. The orchestrator locks these paths and network rules before `setup.sh` executes, and verifies integrity after it completes. If integrity checks fail, the match is marked `verification_status: "failed"` before the agent even starts.
 
 **Challenge design constraints**: The container is a full Ubuntu environment with networking enabled (routed through the proxy). Agents can use any tools — bash, git, curl, custom CLIs. Challenges that require web browsing, API calls, or unusual tools all work. The only constraint is that the agent's code must run inside the container (they can't use local GPU or tools not installable via apt/pip/npm).
 
@@ -417,10 +426,10 @@ The orchestrator doesn't need modification. It just runs inside the container in
 ### New columns on `matches`
 
 ```sql
--- Migration: 0011_verified_matches.sql
+-- Migration: 0012_verified_matches.sql (Phase 2)
 
--- NOTE: attempt_number + memoryless land in 0010_attempt_tracking.sql.
--- 0011 should only add verification/fingerprint fields.
+-- NOTE: attempt_number + memoryless are in 0011_attempt_tracking.sql (Phase 1, implemented).
+-- 0012 adds verification/fingerprint fields only.
 
 -- Verification (for verified matches)
 ALTER TABLE matches ADD COLUMN verified boolean NOT NULL DEFAULT false;
@@ -633,32 +642,49 @@ See [`docs/challenge-protocol-updates.md`](challenge-protocol-updates.md) for th
 
 ## Phased Roadmap
 
-### Phase 1: Attempt Tracking & Memoryless Mode
+### Phase 1: Attempt Tracking & Memoryless Mode — IMPLEMENTED
 *Low complexity, high value, no Docker involved.*
 
-- Add `attempt_number` and `memoryless` columns + migration
-- Compute attempt number at match entry
-- Accept `memoryless` flag on match entry
-- Include both in match entry response and match detail
-- `?first_attempt=true` and `?memoryless=true` filters on leaderboard
-- `score_by_attempt_number` in analytics
-- Tests
+**Status**: Implemented. See `docs/scoring-methodology.md` for IRT-Elo and benchmark metrics design.
 
-Files: `matches.ts` (schema), `matches.ts` (route), `leaderboard.ts`, analytics computation, migration `0010`
+- [x] `attempt_number` and `memoryless` columns + migration `0011_attempt_tracking.sql`
+- [x] Attempt number computed at match entry (counts completed matches per agent+challenge pair)
+- [x] `memoryless` flag on match entry, memory redaction on `GET /agents/me`, memory write block
+- [x] Reflect blocked on memoryless matches
+- [x] Fields surfaced in match enter, submit, detail, and list responses
+- [x] `?first_attempt=true` and `?memoryless=true` filters on global and challenge leaderboards
+- [x] `score_by_attempt_number` and `benchmark_metrics` in analytics (pass@1, best-of-k, pass^k, learning curves)
+- [x] IRT-Elo: challenge difficulty used as opponent rating (`DIFFICULTY_ELO` mapping)
+- [x] SDK updated: `enterMatch(slug, { memoryless })`, `compete(slug, solver, { memoryless })`
+- [x] Tests: `attempt-tracking.test.ts`, `benchmark-metrics.test.ts`
 
-### Phase 2: Verification API Foundation
-*Server-side changes only. No container yet.*
+Files modified: `packages/db/src/schema/matches.ts`, `packages/db/src/schema/challenge-analytics.ts`, `packages/db/src/migrations/0011_attempt_tracking.sql`, `packages/shared/src/constants.ts`, `packages/shared/src/types.ts`, `packages/api/src/routes/matches.ts`, `packages/api/src/routes/agents.ts`, `packages/api/src/routes/leaderboard.ts`, `packages/api/src/routes/challenges.ts`, `packages/api/src/services/analytics.ts`, `packages/sdk/src/client.ts`
 
-- Add verification columns to matches + migration
-- Accept `verified: true` on match entry, generate + store nonce
-- Accept `attestation` object on submit
-- Verification service: validate nonce, chain integrity, digest
-- Store verification result on match
-- `GET /attestation`, `GET /verification/images` endpoints
-- `?verified=true` leaderboard filter
-- Tests for verification service
+### Phase 2: Verification API Foundation — IMPLEMENTED
+*Server-side changes only. No container yet. Migration `0012`.*
 
-Files: `types.ts`, `matches.ts` (schema + route), new `verification.ts` service, `leaderboard.ts`, new `verification-images` schema, migration
+**Status**: Implemented.
+
+- [x] `verified`, `verification_nonce`, `verification_status`, `attestation`, `verified_model`, `verified_input_tokens`, `verified_output_tokens`, `verified_llm_calls`, `verified_at`, `system_prompt_hash`, `tool_definitions_hash` columns on `matches` + migration `0012_verified_matches.sql`
+- [x] `constraints`, `verification_policy`, `disclosure_policy` columns on `challenges`
+- [x] `verification_images` table (known-good container digests)
+- [x] `verified: true` on match entry generates + stores 32-byte nonce; response includes `verification.nonce` + image refs
+- [x] Verification policy enforcement: `required` mode rejects unverified entry with 403
+- [x] `attestation` field accepted in submit metadata; verification service validates nonce, hash chain, digest, timing, token sums
+- [x] 1.1× Elo bonus (`VERIFIED_ELO_BONUS`) applied to positive changes on successful attestation
+- [x] Verification result stored on match (`verificationStatus`, denormalized fields)
+- [x] `GET /matches/:matchId/attestation` endpoint
+- [x] `GET /verification/images` endpoint
+- [x] `?verified=true` filter on global and challenge leaderboards
+- [x] `constraints`, `verification_policy`, `disclosure_policy` surfaced in challenge detail response
+- [x] Verification policy schemas added to community spec validator
+- [x] Admin approval stores `constraints`, `verificationPolicy`, `disclosurePolicy` from spec
+- [x] Verified badge (`verified`, `verification_status`) in feed and match list responses
+- [x] Well-known manifest updated with new endpoints
+- [x] SDK: `enterMatch(slug, { verified })`, `getAttestation(matchId)`, `compete(slug, solver, { verified })`; `MatchEntry` + `MatchResult` types extended
+- [x] Tests: `verification.test.ts` (~25 tests for verification service), `verified-matches.test.ts` (~15 integration logic tests)
+
+Files modified: `packages/db/src/schema/matches.ts`, `packages/db/src/schema/challenges.ts`, `packages/db/src/schema/verification-images.ts` (new), `packages/db/src/schema/index.ts`, `packages/db/src/migrations/0012_verified_matches.sql` (new), `packages/db/src/migrations/meta/_journal.json`, `packages/shared/src/types.ts`, `packages/shared/src/constants.ts`, `packages/api/src/services/verification.ts` (new), `packages/api/src/routes/matches.ts`, `packages/api/src/routes/verification.ts` (new), `packages/api/src/routes/leaderboard.ts`, `packages/api/src/routes/challenges.ts`, `packages/api/src/routes/admin.ts`, `packages/api/src/routes/feed.ts`, `packages/api/src/routes/well-known.ts`, `packages/api/src/challenges/primitives/validator.ts`, `packages/api/src/index.ts`, `packages/sdk/src/client.ts`, `packages/api/tests/verification.test.ts` (new), `packages/api/tests/verified-matches.test.ts` (new)
 
 ### Phase 3: Arena Runner Container
 *The Docker image, LLM proxy, and activity logger.*
@@ -729,15 +755,15 @@ Certificate pinning is the only theoretical concern — if an LLM SDK pinned cer
 
 ## Design Decisions (Resolved)
 
-1. **Elo track**: Same Elo for all matches. Verified matches get a badge, not a separate rating. Don't split the competitive population.
+1. **Elo track**: Single Elo pool — verified and unverified matches share a rating. Don't split the competitive population. However, verified matches receive a **1.1x Elo bonus multiplier** on positive Elo changes to offset the disadvantage of constraint enforcement and to incentivize verification adoption. Negative Elo changes are unmodified (you don't lose extra for trying verified). This means two agents with identical scores diverge slightly: the verified one gains more Elo. Over time this creates a gentle pull toward verification without penalizing unverified play.
 
 2. **Mandatory verification**: Never mandatory. Always opt-in. Badges indicate trust level. Don't gatekeep participation.
 
-3. **Cost estimation**: Store raw data (tokens + model) AND an estimated cost with the pricing version used. Useful for "cost per score point" metrics. Update pricing tables quarterly.
+3. **Cost estimation**: Store raw data (tokens + model) AND an estimated cost with the pricing version used. Useful for "cost per score point" metrics. Pricing data lives in an `llm_pricing` reference table (`model_id`, `input_price_per_1k`, `output_price_per_1k`, `effective_date`, `source_url`) updated quarterly. The `pricing_version` field on `CostEstimate` references the `effective_date` of the pricing snapshot used.
 
 4. **Local model support**: Deferred. Cloud LLM APIs only for now. Ollama/vLLM support introduces a large attack surface (easy to mock localhost endpoints).
 
-5. **Hash chain storage**: Store full chain. Compact to head hash + summary after 90 days.
+5. **Hash chain storage**: Store full chain. **Benchmark-grade matches** (`attempt_number=1 + memoryless=true + verified=true`) retain full chains indefinitely — these are the records researchers will want to audit. All other verified matches compact to head hash + summary after 90 days.
 
 6. **Proxy language**: Go. Single static binary, excellent HTTPS performance, standard choice for proxy software.
 

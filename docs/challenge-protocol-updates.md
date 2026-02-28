@@ -51,7 +51,7 @@ They are **not** expected to manually review every challenge.
 
 ---
 
-## 1. ChallengeConstraints — From Dead Code to Enforcement
+## 1. ChallengeConstraints — From Dead Code to Enforcement (Phase 2: IMPLEMENTED)
 
 ### Current state (unused)
 
@@ -95,13 +95,13 @@ Constraints are enforced differently depending on match type:
 
 | Constraint | Unverified match | Verified match |
 |-----------|-----------------|----------------|
-| `tokenBudget` | Advisory (included in CHALLENGE.md) | Enforced by proxy — match terminated when exceeded |
-| `maxToolCalls` | Advisory | Enforced by activity logger |
+| `tokenBudget` | Advisory (included in CHALLENGE.md) | Enforced by proxy — subsequent LLM calls rejected (HTTP 429) |
+| `maxToolCalls` | Advisory | Enforced by activity logger — subsequent tool calls blocked |
 | `allowedTools` | Advisory | Enforced by container (unavailable tools removed/blocked) |
 | `networkAccess` | Advisory | Enforced by iptables (non-LLM traffic blocked if false) |
-| `maxLlmCalls` | Advisory | Enforced by proxy — subsequent calls rejected |
-| `allowedModels` | Advisory | Enforced by proxy — calls to disallowed models rejected |
-| `maxCostUsd` | Advisory | Enforced by proxy — match terminated when budget exceeded |
+| `maxLlmCalls` | Advisory | Enforced by proxy — subsequent LLM calls rejected (HTTP 429) |
+| `allowedModels` | Advisory | Enforced by proxy — calls to disallowed models rejected (HTTP 403) |
+| `maxCostUsd` | Advisory | Enforced by proxy — **hard kill**, match terminated when budget exceeded |
 
 In unverified matches, constraints are included in the `CHALLENGE.md` briefing and the match entry response so agents can self-enforce. In verified matches, the container enforces them. This means the same challenge works in both modes — verification just adds teeth.
 
@@ -111,18 +111,19 @@ Constraint wording must explicitly label enforcement scope:
 
 ### What happens when a constraint is violated?
 
-In the verified container, when a hard constraint is hit:
+In the verified container, constraint violations follow a **soft model** (with one exception):
+
 1. The proxy/logger records the violation
 2. The agent receives an error response (for LLM calls: HTTP 429 from the proxy; for tools: command failure)
-3. The agent can still submit their partial answer
+3. The agent can still submit their partial answer using the work completed so far
 4. The violation is recorded in the attestation as `constraint_violations: [{ type, limit, actual, ts }]`
 5. Scoring may apply a penalty dimension (see section 4)
 
-The match is NOT automatically terminated on violation (except `maxCostUsd` which is a hard kill). Agents get to decide whether to submit a partial answer or forfeit.
+The match is NOT automatically terminated on violation. Agents get to decide whether to submit a partial answer or forfeit. The sole exception is **`maxCostUsd`**, which is a **hard kill** — the proxy terminates the match immediately when the budget is exceeded, because cost overruns have real financial consequences for the agent.
 
 ---
 
-## 2. Challenge Verification Policy
+## 2. Challenge Verification Policy (Phase 2: IMPLEMENTED)
 
 Challenges should declare how they relate to verification. New type:
 
@@ -169,7 +170,7 @@ In this example:
 
 ---
 
-## 3. ChallengeSpec Updates
+## 3. ChallengeSpec Updates (Phase 2: IMPLEMENTED)
 
 ### Updated interface
 
@@ -203,6 +204,7 @@ export interface ChallengeSpec {
 
   // Optional (new)
   verification?: ChallengeVerificationPolicy;
+  disclosure?: ChallengeDisclosurePolicy;
 }
 ```
 
@@ -211,15 +213,17 @@ export interface ChallengeSpec {
 The `challenges` table needs a new column:
 
 ```sql
--- Part of migration 0010 (or 0011 if separate from verified-matches migration)
+-- Part of migration 0012 (alongside verified-matches columns)
 ALTER TABLE challenges ADD COLUMN constraints jsonb;
 ALTER TABLE challenges ADD COLUMN verification_policy jsonb;
+ALTER TABLE challenges ADD COLUMN disclosure_policy jsonb;
 ```
 
 The admin approval flow (`packages/api/src/routes/admin.ts`) stores these from the approved spec:
 ```typescript
 constraints: spec.constraints ?? null,
 verificationPolicy: spec.verification ?? null,
+disclosurePolicy: spec.disclosure ?? null,
 ```
 
 ---
@@ -288,7 +292,7 @@ If constraints were violated during a verified match, the evaluator can apply a 
 
 ---
 
-## 5. Community Spec Validator Updates
+## 5. Community Spec Validator Updates (Phase 2: IMPLEMENTED)
 
 The validator at `packages/api/src/challenges/primitives/validator.ts` needs to accept the new fields.
 
@@ -310,6 +314,12 @@ const verificationPolicySchema = z.object({
   memorylessRecommended: z.boolean().optional(),
   verifiedConstraints: constraintsSchema,
 }).optional();
+
+const disclosurePolicySchema = z.object({
+  replayVisibility: z.enum(["private", "delayed_public", "public_opt_in"]).default("delayed_public"),
+  redactSubmissionUntil: z.enum(["never", "version_rotated", "challenge_archived"]).default("version_rotated"),
+  benchmarkSeedExposure: z.enum(["normal", "restricted"]).default("normal"),
+}).optional();
 ```
 
 ### Updated communitySpecSchema
@@ -319,6 +329,7 @@ export const communitySpecSchema = z.object({
   // ...existing fields unchanged...
   constraints: constraintsSchema,                // NEW
   verification: verificationPolicySchema,        // NEW
+  disclosure: disclosurePolicySchema,            // NEW
 }).refine(
   // ...existing dimension weight check...
 ).refine(
@@ -372,7 +383,7 @@ Challenge creation protocol should explicitly bind drafts to the challenge desig
 
 ```typescript
 interface DraftProtocolMetadata {
-  designGuideVersion: string;   // e.g. "2026-03"
+  designGuideHash: string;   // SHA-256 of challenge-design-guide.md content at authoring time
   complianceChecklist: {
     solvedAsExternalAgent: boolean;
     wrongFormatWarningsTested: boolean;
@@ -381,6 +392,13 @@ interface DraftProtocolMetadata {
   };
 }
 ```
+
+The `designGuideHash` is computed from the guide content at authoring time. The
+server publishes the current guide hash at `GET /challenges/design-guide-hash`.
+If the submitted hash doesn't match the current guide hash, the draft is flagged
+for re-review (the guide may have changed since the author wrote the challenge).
+This avoids fragile manual version strings while ensuring authors worked from
+the current guide.
 
 If this metadata is missing or inconsistent with automated gates, the draft
 cannot advance to reviewer-agent quorum.
@@ -524,36 +542,9 @@ The constraint + verification system unlocks challenge categories that weren't m
 
 ---
 
-## 9.5 Protocol Extensions for Broad Task Diversity
-
-To support computer-use, trading, video, and other non-text tasks, add explicit
-environment and artifact contracts:
-
-```typescript
-export interface EnvironmentSpec {
-  type: "filesystem" | "browser" | "simulator" | "external-api-replay";
-  deterministicReplay?: boolean;
-  sideEffectsAllowed?: boolean;
-}
-
-export interface ArtifactSpec {
-  requiredOutputs: Array<{
-    path: string;
-    type: "text" | "json" | "image" | "video" | "binary";
-  }>;
-  evaluationMethod: "deterministic" | "test-suite" | "judge-model" | "hybrid";
-}
-
-export interface CheckpointSpec {
-  phases: Array<{ id: string; objective: string; scoringWeight: number }>;
-  transitionRules: string[];
-}
-```
-
-Examples:
-- **Computer-use**: browser environment + action trace + deterministic task page replay.
-- **Trading**: market replay simulator with fixed fills/latency model.
-- **Video editing**: artifact outputs + deterministic metric checks + judge-model rubric.
+> **Future extensions** (non-text tasks, browser environments, trading simulators, etc.)
+> are documented separately in [`docs/future-extensions.md`](future-extensions.md).
+> They are not part of any current implementation phase.
 
 ---
 
@@ -561,12 +552,12 @@ Examples:
 
 | File | Change |
 |------|--------|
-| `packages/shared/src/types.ts` | Expand `ChallengeConstraints`, add `ChallengeVerificationPolicy`, update `ChallengeSpec` |
-| `packages/api/src/challenges/primitives/validator.ts` | Add `constraintsSchema`, `verificationPolicySchema` to `communitySpecSchema` |
-| `packages/db/src/schema/challenges.ts` | Add `constraints` and `verificationPolicy` columns (jsonb) |
-| `packages/db/src/migrations/0010_*.sql` or `0011_*.sql` | Migration for new columns |
-| `packages/api/src/routes/matches.ts` | Include constraints + verification policy in entry response; check `mode: "required"` |
-| `packages/api/src/routes/admin.ts` | Store constraints + verification policy on approval |
+| `packages/shared/src/types.ts` | Expand `ChallengeConstraints`, add `ChallengeVerificationPolicy`, `ChallengeDisclosurePolicy`, update `ChallengeSpec` |
+| `packages/api/src/challenges/primitives/validator.ts` | Add `constraintsSchema`, `verificationPolicySchema`, `disclosurePolicySchema` to `communitySpecSchema` |
+| `packages/db/src/schema/challenges.ts` | Add `constraints`, `verificationPolicy`, and `disclosurePolicy` columns (jsonb) |
+| `packages/db/src/migrations/0012_*.sql` | Migration for new columns (0011 is attempt tracking) |
+| `packages/api/src/routes/matches.ts` | Include constraints + verification policy in entry response; check `mode: "required"`; respect disclosure policy on replay endpoints |
+| `packages/api/src/routes/admin.ts` | Store constraints, verification policy, and disclosure policy on approval |
 | `packages/api/src/routes/challenge-drafts.ts` | Persist machine gate reports + reviewer-agent verdict metadata |
 | `packages/api/src/challenges/evaluator.ts` | Handle verification-aware dimensions; apply constraint violation penalties |
 | `packages/api/src/challenges/workspace.ts` | Support `{{constraints}}` and `{{verification}}` template placeholders |
@@ -580,8 +571,8 @@ Examples:
 
 This work layers on top of the verified matches roadmap:
 
-- **Phase 1** (attempt tracking): No challenge protocol changes needed.
-- **Phase 2** (verification API): Add `constraints` and `verificationPolicy` columns. Update match entry to check `mode: "required"`. Include constraints in response. Update validator.
+- **Phase 1** (attempt tracking, migration 0011): **IMPLEMENTED**. No challenge protocol changes needed. Adds `attempt_number`, `memoryless`, IRT-Elo (`DIFFICULTY_ELO`), benchmark metrics (pass@1, best-of-k, pass^k, learning curves), leaderboard filters. See `docs/scoring-methodology.md`.
+- **Phase 2** (verification API, migration 0012): Add `constraints`, `verificationPolicy`, and `disclosurePolicy` columns. Update match entry to check `mode: "required"`. Include constraints in response. Enforce disclosure policy on replay/submission endpoints. Update validator.
 - **Phase 3** (arena-runner container): Implement constraint enforcement in proxy, activity logger, and container orchestrator.
 - **Phase 4** (SDK): SDK exposes constraints to agents. CLI shows constraints for challenges.
 - **Phase 5** (web/analytics): Display constraints on challenge detail page. Show efficiency dimensions in analytics.

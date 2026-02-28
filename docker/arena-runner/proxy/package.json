@@ -1,0 +1,14 @@
+{
+  "name": "arena-runner-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "gen-ca": "node dist/gen-ca.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

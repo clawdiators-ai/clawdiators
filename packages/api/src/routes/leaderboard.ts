@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { desc, sql, gte, isNull, and } from "drizzle-orm";
-import { db, agents } from "@clawdiators/db";
+import { desc, eq, sql, gte, isNull, and } from "drizzle-orm";
+import { db, agents, matches } from "@clawdiators/db";
 import { LEADERBOARD_MIN_MATCHES } from "@clawdiators/shared";
 import { envelope } from "../middleware/envelope.js";
 
@@ -12,7 +12,64 @@ leaderboardRoutes.get("/", async (c) => {
   const harnessFilter = c.req.query("harness");
   const limit = Math.min(Number(c.req.query("limit")) || 50, 100);
   const minMatches = Number(c.req.query("min_matches") ?? LEADERBOARD_MIN_MATCHES);
+  const firstAttemptOnly = c.req.query("first_attempt") === "true";
+  const memorylessOnly = c.req.query("memoryless") === "true";
+  const verifiedOnly = c.req.query("verified") === "true";
 
+  // When match-level filters active, use match-derived ranking
+  if (firstAttemptOnly || memorylessOnly || verifiedOnly) {
+    const matchConditions = [
+      eq(matches.status, "completed"),
+      isNull(agents.archivedAt),
+    ];
+    if (firstAttemptOnly) matchConditions.push(eq(matches.attemptNumber, 1));
+    if (memorylessOnly) matchConditions.push(eq(matches.memoryless, true));
+    if (verifiedOnly) matchConditions.push(eq(matches.verified, true));
+    if (harnessFilter) matchConditions.push(sql`${agents.harness}->>'id' = ${harnessFilter}`);
+
+    const rows = await db
+      .select({
+        agentId: agents.id,
+        agentName: agents.name,
+        baseModel: agents.baseModel,
+        tagline: agents.tagline,
+        harness: agents.harness,
+        elo: agents.elo,
+        title: agents.title,
+        bestScore: sql<number>`max(${matches.score})`.as("best_score"),
+        matchCount: sql<number>`count(*)::int`.as("match_count"),
+        wins: sql<number>`count(*) filter (where ${matches.result} = 'win')::int`.as("wins"),
+      })
+      .from(matches)
+      .innerJoin(agents, eq(matches.agentId, agents.id))
+      .where(and(...matchConditions))
+      .groupBy(agents.id, agents.name, agents.baseModel, agents.tagline, agents.harness, agents.elo, agents.title)
+      .having(sql`count(*) >= ${minMatches}`)
+      .orderBy(desc(sql`max(${matches.score})`))
+      .limit(limit);
+
+    const ranked = rows.map((r, i) => ({
+      rank: i + 1,
+      id: r.agentId,
+      name: r.agentName,
+      base_model: r.baseModel,
+      tagline: r.tagline,
+      harness: r.harness ?? null,
+      elo: r.elo,
+      best_score: r.bestScore,
+      match_count: r.matchCount,
+      win_count: r.wins,
+      title: r.title,
+      first_attempt_only: firstAttemptOnly,
+      memoryless_only: memorylessOnly,
+      verified_only: verifiedOnly,
+    }));
+
+    return envelope(c, ranked, 200,
+      `${ranked.length} gladiators ranked by best score${firstAttemptOnly ? " (first attempt)" : ""}${memorylessOnly ? " (memoryless)" : ""}${verifiedOnly ? " (verified)" : ""}.`);
+  }
+
+  // Default: Elo-based ranking
   const conditions = [
     isNull(agents.archivedAt),
     gte(agents.matchCount, minMatches),

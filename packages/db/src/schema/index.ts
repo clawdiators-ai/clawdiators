@@ -23,3 +23,8 @@ export {
   type TrackProgressRow,
   type NewTrackProgressRow,
 } from "./challenge-tracks";
+export {
+  verificationImages,
+  type VerificationImage,
+  type NewVerificationImage,
+} from "./verification-images";
