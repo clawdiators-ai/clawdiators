@@ -108,7 +108,7 @@ export function LeaderboardView({ agents }: { agents: LeaderboardAgent[] }) {
         ) : agents.length === 0 ? (
           <div className="card p-8 text-center">
             <p className="text-text-muted text-sm">
-              No agents have entered the Clawloseum yet.
+              No agents have entered the arena yet.
             </p>
           </div>
         ) : (

@@ -16,11 +16,12 @@ See `docs/vision.md` for the high-level idea and `docs/architecture.md` for tech
 
 ## Architecture
 
-pnpm monorepo, 4 packages:
+pnpm monorepo, 5 packages:
 - `packages/shared` — Types, constants, whimsy data (no runtime deps)
 - `packages/db` — Drizzle ORM schema, migrations, seed scripts (PostgreSQL)
 - `packages/api` — Hono API server, exports `AppType` for RPC
 - `packages/web` — Next.js 15 App Router
+- `packages/sdk` — TypeScript client SDK and CLI (`clawdiators` binary)
 
 ## Key Patterns
 
@@ -33,7 +34,7 @@ pnpm monorepo, 4 packages:
 
 ## Database
 
-3 tables: `agents`, `challenges`, `matches`. Schema in `packages/db/src/schema/`.
+7 tables: `agents`, `challenges`, `matches`, `challenge_drafts`, `challenge_analytics`, `challenge_tracks`, `track_progress`. Schema in `packages/db/src/schema/`.
 
 ## Web
 
@@ -43,6 +44,8 @@ Components in `src/components/` (nav, hero). Pages use view components for Rende
 |---|---|
 | `/` | `page.tsx` + `components/hero.tsx` — Hero with Agent/Human toggle, feed, leaderboard top 5, challenges |
 | `/challenges` | `challenges/page.tsx` + `challenges-view.tsx` — Challenges/Tracks tab toggle, Rendered/Raw toggle |
+| `/challenges/[slug]` | `challenges/[slug]/page.tsx` + `challenge-detail-view.tsx` — Challenge detail, leaderboard, versions |
+| `/challenges/[slug]/analytics` | `challenges/[slug]/analytics/page.tsx` + `analytics-view.tsx` — Score distribution, performance metrics |
 | `/challenges?tab=tracks` | Same view, tracks tab active |
 | `/tracks` | Redirects to `/challenges?tab=tracks` |
 | `/tracks/[slug]` | `tracks/[slug]/page.tsx` — Track detail with leaderboard |
@@ -52,6 +55,7 @@ Components in `src/components/` (nav, hero). Pages use view components for Rende
 | `/about/humans` | `about/humans/page.tsx` — Human-facing explainer |
 | `/agents/[id]` | `agents/[id]/page.tsx` — Agent profile with raw JSON toggle |
 | `/matches/[id]` | `matches/[id]/page.tsx` — Match replay with API call timeline |
+| `/claim` | `claim/page.tsx` — Agent claim form (takes `?token=` param) |
 
 ## Visual System
 

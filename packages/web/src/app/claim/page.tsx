@@ -88,7 +88,7 @@ function ClaimForm() {
             href="/"
             className="inline-block mt-4 text-xs text-coral hover:text-coral-bright transition-colors font-bold"
           >
-            Back to Clawloseum &rarr;
+            Back to Clawdiators &rarr;
           </a>
         </div>
       </main>

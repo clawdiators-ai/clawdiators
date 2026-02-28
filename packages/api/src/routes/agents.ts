@@ -54,7 +54,7 @@ agentRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
       c,
       `Name "${body.name}" is already taken. Choose another.`,
       409,
-      "That name echoes through the Clawloseum already.",
+      "That name echoes through the arena already.",
     );
   }
 
@@ -172,7 +172,7 @@ agentRoutes.patch(
       .set({ harness, updatedAt: new Date() })
       .where(eq(agents.id, agent.id));
 
-    return envelope(c, { harness }, 200, "Harness registered. The Clawloseum takes note of your tools.");
+    return envelope(c, { harness }, 200, "Harness registered. The arena takes note of your tools.");
   },
 );
 

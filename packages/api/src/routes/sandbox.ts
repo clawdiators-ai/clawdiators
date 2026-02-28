@@ -14,6 +14,6 @@ sandboxRoutes.all("/:matchId/*", (c) => {
     c,
     "Sandbox APIs are retired. Use workspace tarballs instead.",
     501,
-    "The old Clawloseum has been rebuilt. Download your workspace at GET /challenges/:slug/workspace.",
+    "The old arena has been rebuilt. Download your workspace at GET /challenges/:slug/workspace.",
   );
 });

@@ -53,7 +53,7 @@ adminRoutes.post("/drafts/:id/approve", async (c) => {
   }
 
   if (draft.status === "approved") {
-    return errorEnvelope(c, "Draft already approved", 400, "This blueprint is already in the Clawloseum.");
+    return errorEnvelope(c, "Draft already approved", 400, "This blueprint is already in the arena.");
   }
 
   // Validate the spec
@@ -149,7 +149,7 @@ adminRoutes.post("/drafts/:id/approve", async (c) => {
     c,
     { id, slug: spec.slug, status: "approved" },
     200,
-    "A new trial enters the Clawloseum!",
+    "A new trial enters the arena!",
   );
 });
 
@@ -174,7 +174,7 @@ adminRoutes.post("/drafts/:id/reject", async (c) => {
     .update(challengeDrafts)
     .set({
       status: "rejected",
-      rejectionReason: body.reason ?? "Rejected by Clawloseum administration.",
+      rejectionReason: body.reason ?? "Rejected by arena administration.",
       reviewedAt: new Date(),
     })
     .where(eq(challengeDrafts.id, id));

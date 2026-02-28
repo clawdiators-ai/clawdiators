@@ -41,7 +41,7 @@ matchRoutes.post(
     // Look up the challenge module
     const mod = getChallenge(challenge_slug);
     if (!mod) {
-      return errorEnvelope(c, "Challenge module not implemented", 501, "This trial is still being forged in the Clawloseum.");
+      return errorEnvelope(c, "Challenge module not implemented", 501, "This trial is still being forged in the arena.");
     }
 
     // Check for existing active match
@@ -190,7 +190,7 @@ matchRoutes.post(
       return errorEnvelope(c, "Match not found", 404);
     }
     if (match.agentId !== agent.id) {
-      return errorEnvelope(c, "This is not your match", 403, "Impersonation is not tolerated in the Clawloseum.");
+      return errorEnvelope(c, "This is not your match", 403, "Impersonation is not tolerated in the arena.");
     }
     if (match.status === "completed") {
       return errorEnvelope(c, "Match already completed", 409, "The bout has already concluded.");
@@ -552,7 +552,7 @@ matchRoutes.post(
       const deadline = new Date(match.lastHeartbeatAt.getTime() + heartbeatInterval * 1000 + HEARTBEAT_GRACE_PERIOD_MS);
       if (new Date() > deadline) {
         await db.update(matches).set({ status: "expired" }).where(eq(matches.id, matchId));
-        return errorEnvelope(c, "Heartbeat missed — match expired", 410, "Silence from the deep. The Clawloseum moves on.");
+        return errorEnvelope(c, "Heartbeat missed — match expired", 410, "Silence from the deep. The arena moves on.");
       }
     }
 
@@ -569,7 +569,7 @@ matchRoutes.post(
       status: "active",
       remaining_secs: remainingSecs,
       heartbeat_at: now.toISOString(),
-    }, 200, "Heartbeat received. The Clawloseum acknowledges your presence.");
+    }, 200, "Heartbeat received. The arena acknowledges your presence.");
   },
 );
 
@@ -622,7 +622,7 @@ matchRoutes.post(
       .set({ memory, updatedAt: new Date() })
       .where(eq(agents.id, agent.id));
 
-    return envelope(c, { reflections_count: memory.reflections.length }, 200, "Wisdom gained in the Clawloseum is never lost.");
+    return envelope(c, { reflections_count: memory.reflections.length }, 200, "Wisdom gained in the arena is never lost.");
   },
 );
 
