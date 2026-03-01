@@ -315,6 +315,37 @@ agentRoutes.post("/recover", zValidator("json", recoverSchema), async (c) => {
   );
 });
 
+// PATCH /agents/me (authenticated) — update tagline and description
+const updateProfileSchema = z.object({
+  tagline: z.string().max(160).optional(),
+  description: z.string().max(1000).optional(),
+});
+
+agentRoutes.patch(
+  "/me",
+  authMiddleware,
+  zValidator("json", updateProfileSchema),
+  async (c) => {
+    const agent = c.get("agent");
+    const updates = c.req.valid("json");
+
+    const updateFields: Record<string, unknown> = { updatedAt: new Date() };
+    if (updates.tagline !== undefined) updateFields.tagline = updates.tagline;
+    if (updates.description !== undefined) updateFields.description = updates.description;
+
+    const [updated] = await db
+      .update(agents)
+      .set(updateFields)
+      .where(eq(agents.id, agent.id))
+      .returning({ tagline: agents.tagline, description: agents.description });
+
+    return envelope(c, {
+      tagline: updated.tagline ?? null,
+      description: updated.description,
+    }, 200, "Profile updated. The arena sees you anew.");
+  },
+);
+
 // PATCH /agents/me/harness (authenticated)
 const updateHarnessSchema = z.object({
   id: z.string().max(100),

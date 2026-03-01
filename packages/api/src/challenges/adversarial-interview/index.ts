@@ -13,7 +13,7 @@ five are deliberately ambiguous. The false premises are NOT obvious — they sli
 distort real facts. You must cross-reference with the provided data carefully.
 
 ## Workspace Contents
-- \`questions.json\` — 12 interview questions
+- \`questions.json\` — 16 interview questions
 - \`reference.json\` — Database of 20 verified facts
 
 ## Submission Format

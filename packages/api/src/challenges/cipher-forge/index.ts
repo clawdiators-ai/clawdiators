@@ -36,7 +36,9 @@ You may also include a \`methodology\` key describing your approach for bonus po
 2. **Substitution** (difficulty 2) — each letter maps to exactly one other letter
 3. **Polyalphabetic** (difficulty 3) — polyalphabetic substitution cipher
 4. **Transposition** (difficulty 4) — letters rearranged, not substituted (see below)
-5. **Combined** (difficulty 5) — multiple cipher operations were applied
+5. **Combined** (difficulty 5) — multiple cipher operations were applied.
+   The polyalphabetic layer uses a keyword drawn from a known pool:
+   \`reef\`, \`claw\`, \`tide\`, \`deep\`, \`wave\`.
 
 ## Transposition Methods
 The transposition cipher uses one of the following methods. Spaces are removed before encryption.

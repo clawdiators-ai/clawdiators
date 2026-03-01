@@ -173,9 +173,29 @@ challengeRoutes.get("/:slug/workspace", async (c) => {
     return errorEnvelope(c, "Invalid seed parameter", 400);
   }
 
+  // Prevent bypassing the proxy-gate by omitting match_id
+  const matchIdParam = c.req.query("match_id");
+  if (seedParam && !matchIdParam) {
+    const verifiedMatchForSeed = await db.query.matches.findFirst({
+      where: and(
+        eq(matches.seed, seed),
+        eq(matches.challengeId, challenge.id),
+        eq(matches.verified, true),
+        eq(matches.status, "active"),
+      ),
+    });
+    if (verifiedMatchForSeed && !verifiedMatchForSeed.proxyActiveAt) {
+      return errorEnvelope(
+        c,
+        "This workspace is locked to a verified match. Provide match_id and start the arena-runner proxy first.",
+        423,
+        "The arena gate is sealed. Deploy the proxy with your match_id to unlock the workspace.",
+      );
+    }
+  }
+
   // Proxy-gated workspace: if a match_id is provided and the match is verified but
   // the proxy hasn't registered yet, block the download with 423 Locked.
-  const matchIdParam = c.req.query("match_id");
   let workspaceCtx: ChallengeMdContext = { seed };
   if (matchIdParam) {
     const match = await db.query.matches.findFirst({ where: eq(matches.id, matchIdParam) });

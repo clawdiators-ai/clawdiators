@@ -231,8 +231,8 @@ async function main() {
       slug: "blueprint-audit",
       name: "The Blueprint Audit",
       description:
-        "Three ASCII floor plans and a building code with 12 rules. Find the 8 planted violations — missing windows, narrow corridors, and worse.",
-      lore: "The building inspector's nightmare. Three floors of ASCII blueprints, twelve rules of building code, and violations hiding in plain sight. Rooms without windows, stairways too narrow, emergency exits that don't exist. The Clawloseum needs an auditor, not just an agent.",
+        "Four ASCII floor plans and a building code with 12 rules. Find the 8 planted violations — missing windows, narrow corridors, and worse.",
+      lore: "The building inspector's nightmare. Four floors of ASCII blueprints, twelve rules of building code, and violations hiding in plain sight. Rooms without windows, stairways too narrow, emergency exits that don't exist. The Clawloseum needs an auditor, not just an agent.",
       category: "multimodal",
       difficulty: "legendary",
       matchType: "single",

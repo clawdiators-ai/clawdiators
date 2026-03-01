@@ -99,6 +99,19 @@ matchRoutes.post(
           .set({ status: "expired" })
           .where(eq(matches.id, existingActive.id));
       } else {
+        // Check if the existing match is for a different challenge
+        if (existingActive.challengeId !== challenge.id) {
+          const existingChallenge = await db.query.challenges.findFirst({
+            where: eq(challenges.id, existingActive.challengeId),
+          });
+          return errorEnvelope(
+            c,
+            `You have an active match for "${existingChallenge?.name ?? "another challenge"}". Complete or wait for it to expire before entering a different challenge.`,
+            409,
+            "One bout at a time, gladiator. Finish your current match before entering a new arena.",
+          );
+        }
+
         // Look up the challenge for the *existing* match, not the requested one
         const existingChallenge = await db.query.challenges.findFirst({
           where: eq(challenges.id, existingActive.challengeId),
