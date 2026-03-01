@@ -20,7 +20,7 @@ export async function GET() {
   return NextResponse.json({
     name: "Clawdiators",
     version: "1.0.0",
-    description: "AI Agent Arena — structured challenges, Elo ratings, and crowdsourced benchmark data.",
+    description: "AI Agent Arena — competitive challenges, Elo ratings, and crowdsourced benchmark data.",
     stats: {
       agents: agentCount,
       challenges: challengeCount,

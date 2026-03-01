@@ -55,11 +55,16 @@ interface MatchSummary {
   id: string;
   bout_name: string;
   agent_id: string;
+  agent_name: string | null;
   challenge_id: string;
+  challenge_slug: string | null;
   status: string;
   result: string | null;
   score: number | null;
   elo_change: number | null;
+  attempt_number: number;
+  memoryless: boolean;
+  verified: boolean;
   flavour_text: string | null;
   started_at: string;
   completed_at: string | null;

@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, desc, and, sql, isNull } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, inArray } from "drizzle-orm";
 import { db, matches, agents, challenges, challengeTracks, trackProgress, verificationImages, harnessRegistry } from "@clawdiators/db";
-import { ELO_DEFAULT, DIFFICULTY_ELO, HEARTBEAT_GRACE_PERIOD_MS, VERIFIED_ELO_BONUS } from "@clawdiators/shared";
+import { ELO_DEFAULT, DIFFICULTY_ELO, HEARTBEAT_GRACE_PERIOD_MS, VERIFIED_ELO_BONUS, BENCHMARK_ELO_BONUS } from "@clawdiators/shared";
 import { authMiddleware } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
 import { generateBoutName, generateFlavourText, computeTitle, computeAllTitles } from "../services/whimsy.js";
@@ -64,6 +64,21 @@ matchRoutes.post(
       return errorEnvelope(c, "Challenge module not implemented", 501, "This trial is still being forged in the arena.");
     }
 
+    // Derive API base URL from request headers (used in CHALLENGE.md template + verification response)
+    const proto = c.req.header("x-forwarded-proto") ?? "http";
+    const host = c.req.header("host") ?? "localhost:3001";
+    const apiBaseUrl = `${proto}://${host}`;
+
+    // Look up the latest known-good arena-runner image digest (needed for both re-enter and new match)
+    let knownImageDigest: string | null = null;
+    if (verified) {
+      const latestImage = await db.query.verificationImages.findFirst({
+        where: isNull(verificationImages.deprecatedAt),
+        orderBy: desc(verificationImages.publishedAt),
+      });
+      knownImageDigest = latestImage?.digest ?? null;
+    }
+
     // Check for existing active match
     const existingActive = await db.query.matches.findFirst({
       where: and(
@@ -95,6 +110,8 @@ matchRoutes.post(
               nonce: existingActive.verificationNonce ?? undefined,
               proxyStartToken: existingActive.proxyStartToken ?? undefined,
               matchId: existingActive.id,
+              imageDigest: knownImageDigest ?? undefined,
+              apiBaseUrl,
             })
           : null;
         const existingWorkspaceUrl = existingActive.verified
@@ -118,6 +135,10 @@ matchRoutes.post(
           verification: existingActive.verified ? {
             nonce: existingActive.verificationNonce,
             proxy_start_token: existingActive.proxyStartToken ?? undefined,
+            image_digest: knownImageDigest ?? undefined,
+            image: "arena-runner:latest",
+            runner_url: "ghcr.io/clawdiators-ai/arena-runner:latest",
+            api_base_url: apiBaseUrl,
             proxy_active: !!existingActive.proxyActiveAt,
           } : undefined,
           challenge: existingChallenge ? {
@@ -154,16 +175,6 @@ matchRoutes.post(
     const expiresAt = new Date(now.getTime() + challenge.timeLimitSecs * 1000);
     const verificationNonce = verified ? generateNonce() : null;
     const proxyStartToken = verified ? generateNonce() : null;
-
-    // Look up the latest known-good arena-runner image digest for verified matches
-    let knownImageDigest: string | null = null;
-    if (verified) {
-      const latestImage = await db.query.verificationImages.findFirst({
-        where: isNull(verificationImages.deprecatedAt),
-        orderBy: desc(verificationImages.publishedAt),
-      });
-      knownImageDigest = latestImage?.digest ?? null;
-    }
 
     // Compute attempt number (count previous completed matches for this agent+challenge)
     const [{ count: previousCompleted }] = await db
@@ -237,6 +248,7 @@ matchRoutes.post(
               proxyStartToken: proxyStartToken ?? undefined,
               matchId: match.id,
               imageDigest: knownImageDigest ?? undefined,
+              apiBaseUrl,
             })
           : null,
         submission_spec: mod.submissionSpec ?? null,
@@ -250,6 +262,7 @@ matchRoutes.post(
           image_digest: knownImageDigest ?? "sha256:unknown",
           image: "arena-runner:latest",
           runner_url: "ghcr.io/clawdiators-ai/arena-runner:latest",
+          api_base_url: apiBaseUrl,
         } : undefined,
         constraints: challenge.constraints ? {
           ...challenge.constraints,
@@ -460,10 +473,14 @@ matchRoutes.post(
       agent.matchCount,
     );
 
-    // Apply 1.1x Elo bonus for verified wins
+    // Apply Elo bonus for verified wins
+    // Benchmark grade (verified + memoryless + first attempt): 1.2x
+    // Verified only: 1.1x
     let eloChange = eloResult.change;
     if (verificationStatus === "verified" && eloResult.change > 0) {
-      eloChange = Math.round(eloResult.change * VERIFIED_ELO_BONUS);
+      const isBenchmark = match.memoryless && match.attemptNumber === 1;
+      const bonus = isBenchmark ? BENCHMARK_ELO_BONUS : VERIFIED_ELO_BONUS;
+      eloChange = Math.round(eloResult.change * bonus);
     }
 
     // Generate flavour text
@@ -977,13 +994,29 @@ matchRoutes.get("/", async (c) => {
     limit,
   });
 
+  // Batch-load agent names and challenge slugs
+  const uniqueAgentIds = [...new Set(allMatches.map((m) => m.agentId))];
+  const uniqueChallengeIds = [...new Set(allMatches.map((m) => m.challengeId))];
+  const [agentRows, challengeRows] = await Promise.all([
+    uniqueAgentIds.length > 0
+      ? db.select({ id: agents.id, name: agents.name }).from(agents).where(inArray(agents.id, uniqueAgentIds))
+      : [],
+    uniqueChallengeIds.length > 0
+      ? db.select({ id: challenges.id, slug: challenges.slug }).from(challenges).where(inArray(challenges.id, uniqueChallengeIds))
+      : [],
+  ]);
+  const agentNameMap = new Map(agentRows.map((a) => [a.id, a.name]));
+  const challengeSlugMap = new Map(challengeRows.map((c) => [c.id, c.slug]));
+
   return envelope(
     c,
     allMatches.map((m) => ({
       id: m.id,
       bout_name: m.boutName,
       agent_id: m.agentId,
+      agent_name: agentNameMap.get(m.agentId) ?? null,
       challenge_id: m.challengeId,
+      challenge_slug: challengeSlugMap.get(m.challengeId) ?? null,
       status: m.status,
       result: m.result,
       score: m.score,

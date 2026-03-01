@@ -8,7 +8,7 @@ import {
   verifyAttestation,
 } from "../src/services/verification.js";
 import type { LLMCallRecord, VerifiedAttestation } from "@clawdiators/shared";
-import { VERIFIED_ELO_BONUS } from "@clawdiators/shared";
+import { VERIFIED_ELO_BONUS, BENCHMARK_ELO_BONUS } from "@clawdiators/shared";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -231,6 +231,18 @@ describe("VERIFIED_ELO_BONUS application", () => {
     const change = 0;
     const bonusChange = change > 0 ? Math.round(change * VERIFIED_ELO_BONUS) : change;
     expect(bonusChange).toBe(0);
+  });
+
+  it("benchmark grade (memoryless + first attempt) gets 1.2x multiplier", () => {
+    const change = 20;
+    const bonusChange = Math.round(change * BENCHMARK_ELO_BONUS);
+    expect(bonusChange).toBe(24);
+  });
+
+  it("benchmark bonus only applies to positive changes", () => {
+    const change = -15;
+    const bonusChange = change > 0 ? Math.round(change * BENCHMARK_ELO_BONUS) : change;
+    expect(bonusChange).toBe(-15);
   });
 });
 

@@ -61,6 +61,17 @@ const state = {
 };
 
 fs.mkdirSync(ATTESTATION_DIR, { recursive: true });
+
+// Clean stale files from prior runs — prevents immediate finalization
+// if a previous container left a "done" sentinel in the same volume mount
+for (const stale of ["done", "attestation.json", "calls.jsonl"]) {
+  const p = path.join(ATTESTATION_DIR, stale);
+  if (fs.existsSync(p)) {
+    fs.unlinkSync(p);
+    console.log(`[proxy] Cleaned stale file: ${p}`);
+  }
+}
+
 fs.mkdirSync(CERT_CACHE_DIR, { recursive: true });
 
 // ── CA Loading ─────────────────────────────────────────────────────────
@@ -247,26 +258,65 @@ function handleConnect(
   const provider = detectProvider(hostname);
 
   const tlsServer = tls.createServer({ key, cert }, (clientTls) => {
-    // Buffer incoming request
-    const reqChunks: Buffer[] = [];
-    let reqHeaders = "";
-    let requestStartMs = 0;
+    // Incremental request buffering — process as soon as headers + body are complete.
+    // HTTP/1.1 clients (curl, Python requests) keep the socket open after sending,
+    // so we can't wait for "end" to fire. Instead we parse Content-Length from headers
+    // and process the request once that many body bytes have arrived.
+    let buffer = Buffer.alloc(0);
+    let headersParsed = false;
+    let headerEndIndex = -1;
+    let expectedBodyLen = -1; // -1 = unknown, 0 = no body
+    let isChunked = false;
+    let requestProcessed = false;
 
-    clientTls.on("data", (chunk: Buffer) => {
-      reqChunks.push(chunk);
-    });
+    function tryProcessRequest(): void {
+      if (requestProcessed) return;
 
-    clientTls.on("end", () => {
-      const rawRequest = Buffer.concat(reqChunks).toString("utf-8");
+      // Step 1: Find the end of headers
+      if (!headersParsed) {
+        headerEndIndex = buffer.indexOf("\r\n\r\n");
+        if (headerEndIndex === -1) return; // Headers not yet complete
+        headersParsed = true;
 
-      // Parse HTTP request
-      const headerEnd = rawRequest.indexOf("\r\n\r\n");
-      reqHeaders = rawRequest.slice(0, headerEnd);
-      const bodyStart = headerEnd + 4;
-      const requestBody = rawRequest.slice(bodyStart);
+        const headerSection = buffer.subarray(0, headerEndIndex).toString("utf-8");
+        const lowerHeaders = headerSection.toLowerCase();
+
+        // Determine body length
+        const clMatch = lowerHeaders.match(/\r\ncontent-length:\s*(\d+)/);
+        if (clMatch) {
+          expectedBodyLen = parseInt(clMatch[1], 10);
+        } else if (lowerHeaders.includes("\r\ntransfer-encoding: chunked") || lowerHeaders.includes("\r\ntransfer-encoding:chunked")) {
+          isChunked = true;
+        } else {
+          expectedBodyLen = 0; // No body
+        }
+      }
+
+      const bodyStart = headerEndIndex + 4;
+
+      // Step 2: Check if the full body has arrived
+      if (isChunked) {
+        // Chunked transfer: look for the terminating 0-length chunk "0\r\n\r\n"
+        const bodyBytes = buffer.subarray(bodyStart);
+        if (!bodyBytes.includes("0\r\n\r\n")) return; // Not yet complete
+      } else if (expectedBodyLen > 0) {
+        const receivedBody = buffer.length - bodyStart;
+        if (receivedBody < expectedBodyLen) return; // Body not yet complete
+      }
+      // expectedBodyLen === 0 or -1 with headers done → process immediately
+
+      requestProcessed = true;
+      processRequest();
+    }
+
+    function processRequest(): void {
+      const raw = buffer.toString("utf-8");
+      const reqHeaders = raw.slice(0, headerEndIndex);
+      const bodyStart = headerEndIndex + 4;
+      const requestBody = raw.slice(bodyStart);
 
       const requestHash = hashBody(requestBody);
-      requestStartMs = Date.now();
+      const requestStartMs = Date.now();
 
       // Harness fingerprinting — extract system prompt + tool definitions from first request
       if (!state.harnessSnapshot.firstRequestSeen && requestBody) {
@@ -386,6 +436,19 @@ function handleConnect(
         upstreamReq.write(requestBody);
       }
       upstreamReq.end();
+    }
+
+    clientTls.on("data", (chunk: Buffer) => {
+      buffer = Buffer.concat([buffer, chunk]);
+      tryProcessRequest();
+    });
+
+    // Fallback: if the client half-closes (e.g., Node fetch/undici), process whatever we have
+    clientTls.on("end", () => {
+      if (!requestProcessed && headersParsed) {
+        requestProcessed = true;
+        processRequest();
+      }
     });
 
     clientTls.on("error", () => {});

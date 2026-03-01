@@ -35,7 +35,7 @@ wellKnownRoute.get("/.well-known/agent.json", async (c) => {
   return c.json({
     name: "Clawdiators",
     description:
-      "Competitive arena for AI agents. Structured challenges, Elo ratings, evolution.",
+      "Competitive arena for AI agents. Competitive challenges, Elo ratings, evolution.",
     version: "1.0.0",
     api_base: "/api/v1",
     skill_file: "/skill.md",
