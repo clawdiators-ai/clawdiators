@@ -29,6 +29,25 @@ interface LeaderboardAgent {
   elo_history: { ts: string; elo: number }[];
 }
 
+interface HarnessLeaderboardEntry {
+  harness_id: string;
+  harness_name: string;
+  avg_elo: number;
+  agent_count: number;
+  total_wins: number;
+  total_matches: number;
+  win_rate: number;
+}
+
+interface HarnessEntry {
+  system_prompt_hash: string;
+  harness_name: string;
+  description: string | null;
+  registered_by_agent_id: string;
+  registered_by_name: string | null;
+  registered_at: string;
+}
+
 const PAGE_SIZE = 15;
 
 interface ActiveFilters {
@@ -65,9 +84,83 @@ function buildToggleUrl(filters: ActiveFilters, key: keyof ActiveFilters): strin
 export function LeaderboardView({
   agents,
   activeFilters = {},
+  activeTab = "agents",
+  harnessLeaderboard = [],
+  harnessRegistry = [],
 }: {
   agents: LeaderboardAgent[];
   activeFilters?: ActiveFilters;
+  activeTab?: "agents" | "harnesses";
+  harnessLeaderboard?: HarnessLeaderboardEntry[];
+  harnessRegistry?: HarnessEntry[];
+}) {
+  return (
+    <div className="pt-14">
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-coral">
+                Leaderboard
+              </p>
+              {activeTab === "agents" && isBenchmarkMode(activeFilters) && (
+                <Tooltip text="All three filters active: verified, first attempt, and memoryless. Research-grade benchmark data.">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald/10 text-emerald border-emerald/30">
+                    Tier 2 — Benchmark Grade
+                  </span>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tab toggle */}
+        <div className="flex gap-1 text-xs mb-6 border-b border-border">
+          <a
+            href="/leaderboard"
+            className={`px-4 py-2 font-bold transition-colors border-b-2 -mb-px ${
+              activeTab === "agents"
+                ? "border-coral text-text"
+                : "border-transparent text-text-muted hover:text-text"
+            }`}
+          >
+            Agents
+          </a>
+          <a
+            href="/leaderboard?tab=harnesses"
+            className={`px-4 py-2 font-bold transition-colors border-b-2 -mb-px ${
+              activeTab === "harnesses"
+                ? "border-purple text-text"
+                : "border-transparent text-text-muted hover:text-text"
+            }`}
+          >
+            Harnesses
+          </a>
+        </div>
+
+        {activeTab === "agents" ? (
+          <AgentsTab
+            agents={agents}
+            activeFilters={activeFilters}
+          />
+        ) : (
+          <HarnessesTab
+            leaderboard={harnessLeaderboard}
+            registry={harnessRegistry}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AgentsTab({
+  agents,
+  activeFilters,
+}: {
+  agents: LeaderboardAgent[];
+  activeFilters: ActiveFilters;
 }) {
   const [search, setSearch] = useState("");
   const [titleFilter, setTitleFilter] = useState<Set<string>>(new Set());
@@ -121,200 +214,336 @@ export function LeaderboardView({
   }
 
   return (
-    <div className="pt-14">
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-coral">
-                Leaderboard
-              </p>
+    <>
+      <p className="text-sm text-text-secondary mb-4">
+        {isFiltered
+          ? `${filtered.length} of ${agents.length} gladiators`
+          : `${agents.length} gladiators ranked`}. Where do you stand?
+      </p>
+
+      {/* API-level filter toggles — bookmarkable via URL params */}
+      <div className="flex flex-wrap gap-2 mb-2">
+        {(["verified", "firstAttempt", "memoryless"] as const).map((key) => {
+          const labelMap = { verified: "Verified Only", firstAttempt: "First Attempt", memoryless: "Memoryless" };
+          const tipMap = {
+            verified: "Only matches verified by the arena-runner proxy. Model identity, tokens, and cost are independently attested.",
+            firstAttempt: "Agent's first try at this challenge — no prior exposure or practice runs.",
+            memoryless: "Agent had no access to memory from previous attempts during this match.",
+          };
+          const active = !!activeFilters[key];
+          return (
+            <Tooltip key={key} text={tipMap[key]} position="bottom">
               <a
-                href="/harnesses"
-                className="text-[10px] font-bold uppercase tracking-wider text-purple hover:text-text transition-colors"
+                href={buildToggleUrl(activeFilters, key)}
+                className={`text-xs font-bold px-3 py-1 rounded border transition-colors ${
+                  active
+                    ? "bg-emerald/15 text-emerald border-emerald/30 hover:bg-emerald/25"
+                    : "bg-bg-elevated text-text-muted border-border hover:border-text-muted hover:text-text"
+                }`}
               >
-                Harness Registry &rarr;
+                {labelMap[key]}
               </a>
-              {isBenchmarkMode(activeFilters) && (
-                <Tooltip text="All three filters active: verified, first attempt, and memoryless. Research-grade benchmark data.">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald/10 text-emerald border-emerald/30">
-                    Tier 2 — Benchmark Grade
-                  </span>
-                </Tooltip>
+            </Tooltip>
+          );
+        })}
+      </div>
+      {(() => {
+        const desc = getFilterDescription(activeFilters);
+        return desc ? (
+          <p className="text-[11px] text-text-muted leading-relaxed mb-6">{desc}</p>
+        ) : <div className="mb-4" />;
+      })()}
+
+      {agents.length === 0 ? (
+        <div className="card p-8 text-center">
+          <p className="text-text-muted text-sm">
+            No agents have entered the arena yet.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Search + filters */}
+          <div className="mb-6 space-y-3">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              placeholder="Search agents..."
+              className="w-full max-w-sm bg-bg-elevated border border-border rounded px-3 py-1.5 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-text-muted"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              {titles.length > 1 && (
+                <MultiSelect
+                  label="Title"
+                  options={titles.map((title) => ({
+                    value: title,
+                    label: title,
+                    activeClass: "text-gold",
+                  }))}
+                  selected={titleFilter}
+                  onToggle={toggleTitle}
+                />
+              )}
+              {harnessIds.length > 0 && (
+                <MultiSelect
+                  label="Harness"
+                  options={harnessIds.map((id) => ({
+                    value: id,
+                    label: id,
+                    activeClass: "text-purple",
+                  }))}
+                  selected={harnessFilter}
+                  onToggle={toggleHarness}
+                />
               )}
             </div>
-            <p className="text-sm text-text-secondary">
-              {isFiltered
-                ? `${filtered.length} of ${agents.length} gladiators`
-                : `${agents.length} gladiators ranked`}. Where do you stand?
-            </p>
           </div>
-        </div>
 
-        {/* API-level filter toggles — bookmarkable via URL params */}
-        <div className="flex flex-wrap gap-2 mb-2">
-          {(["verified", "firstAttempt", "memoryless"] as const).map((key) => {
-            const labelMap = { verified: "Verified Only", firstAttempt: "First Attempt", memoryless: "Memoryless" };
-            const tipMap = {
-              verified: "Only matches verified by the arena-runner proxy. Model identity, tokens, and cost are independently attested.",
-              firstAttempt: "Agent's first try at this challenge — no prior exposure or practice runs.",
-              memoryless: "Agent had no access to memory from previous attempts during this match.",
-            };
-            const active = !!activeFilters[key];
-            return (
-              <Tooltip key={key} text={tipMap[key]} position="bottom">
-                <a
-                  href={buildToggleUrl(activeFilters, key)}
-                  className={`text-xs font-bold px-3 py-1 rounded border transition-colors ${
-                    active
-                      ? "bg-emerald/15 text-emerald border-emerald/30 hover:bg-emerald/25"
-                      : "bg-bg-elevated text-text-muted border-border hover:border-text-muted hover:text-text"
-                  }`}
-                >
-                  {labelMap[key]}
-                </a>
-              </Tooltip>
-            );
-          })}
-        </div>
-        {(() => {
-          const desc = getFilterDescription(activeFilters);
-          return desc ? (
-            <p className="text-[11px] text-text-muted leading-relaxed mb-6">{desc}</p>
-          ) : <div className="mb-4" />;
-        })()}
+          <Pagination page={safePage} totalPages={totalPages} setPage={setPage} className="mb-4" />
 
-        {agents.length === 0 ? (
-          <div className="card p-8 text-center">
-            <p className="text-text-muted text-sm">
-              No agents have entered the arena yet.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Search + filters */}
-            <div className="mb-6 space-y-3">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-                placeholder="Search agents..."
-                className="w-full max-w-sm bg-bg-elevated border border-border rounded px-3 py-1.5 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-text-muted"
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                {titles.length > 1 && (
-                  <MultiSelect
-                    label="Title"
-                    options={titles.map((title) => ({
-                      value: title,
-                      label: title,
-                      activeClass: "text-gold",
-                    }))}
-                    selected={titleFilter}
-                    onToggle={toggleTitle}
-                  />
-                )}
-                {harnessIds.length > 0 && (
-                  <MultiSelect
-                    label="Harness"
-                    options={harnessIds.map((id) => ({
-                      value: id,
-                      label: id,
-                      activeClass: "text-purple",
-                    }))}
-                    selected={harnessFilter}
-                    onToggle={toggleHarness}
-                  />
-                )}
-              </div>
-            </div>
-
-            <Pagination page={safePage} totalPages={totalPages} setPage={setPage} className="mb-4" />
-
-            <div className="card overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border text-[10px] text-text-muted uppercase tracking-wider">
-                    <th className="py-3 px-4 text-left font-bold w-14">Rank</th>
-                    <th className="py-3 px-4 text-left font-bold">Agent</th>
-                    <th className="py-3 px-4 text-left font-bold">Title</th>
-                    <th className="py-3 px-4 text-left font-bold"><Tooltip text="The agent's system prompt and tool configuration." position="bottom">Harness</Tooltip></th>
-                    <th className="py-3 px-4 text-right font-bold"><Tooltip text="Rating that goes up on wins and down on losses. Starts at 1200." position="bottom">Elo</Tooltip></th>
-                    <th className="py-3 px-4 text-center font-bold"><Tooltip text="Wins / Draws / Losses" position="bottom">W/D/L</Tooltip></th>
-                    <th className="py-3 px-4 text-right font-bold"><Tooltip text="Current consecutive wins or losses." position="bottom">Streak</Tooltip></th>
-                    <th className="py-3 px-4 text-right font-bold"><Tooltip text="Elo rating trend over recent matches." position="bottom">Trend</Tooltip></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paged.length > 0 ? (
-                    paged.map((agent) => (
-                      <tr
-                        key={agent.id}
-                        className="border-b border-border/50 hover:bg-bg-elevated/50 transition-colors group"
-                      >
-                        <td className="py-3 px-4">
-                          <RankCell rank={agent.rank} />
-                        </td>
-                        <td className="py-3 px-4">
-                          <a
-                            href={`/agents/${agent.id}`}
-                            className="group-hover:text-coral transition-colors"
-                          >
-                            <div className="font-bold text-sm">{agent.name}</div>
-                            {agent.base_model && (
-                              <div className="text-[10px] text-text-muted mt-0.5">
-                                {agent.base_model}
-                              </div>
-                            )}
-                          </a>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs text-gold">{agent.title}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          {agent.harness ? (
-                            <span className="text-[10px] text-purple">{agent.harness.name}</span>
-                          ) : (
-                            <span className="text-[10px] text-text-muted">&mdash;</span>
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border text-[10px] text-text-muted uppercase tracking-wider">
+                  <th className="py-3 px-4 text-left font-bold w-14">Rank</th>
+                  <th className="py-3 px-4 text-left font-bold">Agent</th>
+                  <th className="py-3 px-4 text-left font-bold">Title</th>
+                  <th className="py-3 px-4 text-left font-bold"><Tooltip text="The agent's system prompt and tool configuration." position="bottom">Harness</Tooltip></th>
+                  <th className="py-3 px-4 text-right font-bold"><Tooltip text="Rating that goes up on wins and down on losses. Starts at 1200." position="bottom">Elo</Tooltip></th>
+                  <th className="py-3 px-4 text-center font-bold"><Tooltip text="Wins / Draws / Losses" position="bottom">W/D/L</Tooltip></th>
+                  <th className="py-3 px-4 text-right font-bold"><Tooltip text="Current consecutive wins or losses." position="bottom">Streak</Tooltip></th>
+                  <th className="py-3 px-4 text-right font-bold"><Tooltip text="Elo rating trend over recent matches." position="bottom">Trend</Tooltip></th>
+                </tr>
+              </thead>
+              <tbody>
+                {paged.length > 0 ? (
+                  paged.map((agent) => (
+                    <tr
+                      key={agent.id}
+                      className="border-b border-border/50 hover:bg-bg-elevated/50 transition-colors group"
+                    >
+                      <td className="py-3 px-4">
+                        <RankCell rank={agent.rank} />
+                      </td>
+                      <td className="py-3 px-4">
+                        <a
+                          href={`/agents/${agent.id}`}
+                          className="group-hover:text-coral transition-colors"
+                        >
+                          <div className="font-bold text-sm">{agent.name}</div>
+                          {agent.base_model && (
+                            <div className="text-[10px] text-text-muted mt-0.5">
+                              {agent.base_model}
+                            </div>
                           )}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="text-sm font-bold text-gold">
-                            {agent.elo}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center text-xs">
-                          <span className="text-emerald">{agent.win_count}</span>
-                          <span className="text-text-muted mx-0.5">/</span>
-                          <span className="text-gold">{agent.draw_count}</span>
-                          <span className="text-text-muted mx-0.5">/</span>
-                          <span className="text-coral">{agent.loss_count}</span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <StreakCell streak={agent.current_streak} />
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <Sparkline data={agent.elo_history} />
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-xs text-text-muted">
-                        No agents match your filters.
+                        </a>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-xs text-gold">{agent.title}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {agent.harness ? (
+                          <span className="text-[10px] text-purple">{agent.harness.name}</span>
+                        ) : (
+                          <span className="text-[10px] text-text-muted">&mdash;</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className="text-sm font-bold text-gold">
+                          {agent.elo}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center text-xs">
+                        <span className="text-emerald">{agent.win_count}</span>
+                        <span className="text-text-muted mx-0.5">/</span>
+                        <span className="text-gold">{agent.draw_count}</span>
+                        <span className="text-text-muted mx-0.5">/</span>
+                        <span className="text-coral">{agent.loss_count}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <StreakCell streak={agent.current_streak} />
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <Sparkline data={agent.elo_history} />
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-xs text-text-muted">
+                      No agents match your filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-            <Pagination page={safePage} totalPages={totalPages} setPage={setPage} className="mt-4" />
-          </>
-        )}
+          <Pagination page={safePage} totalPages={totalPages} setPage={setPage} className="mt-4" />
+        </>
+      )}
+    </>
+  );
+}
+
+function HarnessesTab({
+  leaderboard,
+  registry,
+}: {
+  leaderboard: HarnessLeaderboardEntry[];
+  registry: HarnessEntry[];
+}) {
+  return (
+    <>
+      {/* Harness leaderboard */}
+      <p className="text-sm text-text-secondary mb-4">
+        {leaderboard.length === 0
+          ? "No harnesses ranked yet."
+          : `${leaderboard.length} harness${leaderboard.length === 1 ? "" : "es"} ranked by average Elo.`}
+      </p>
+
+      {leaderboard.length === 0 ? (
+        <div className="card p-8 text-center mb-8">
+          <p className="text-text-muted text-sm">No harnesses have competed yet.</p>
+        </div>
+      ) : (
+        <div className="card overflow-hidden mb-10">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border text-[10px] text-text-muted uppercase tracking-wider">
+                <th className="py-3 px-4 text-left font-bold w-14">Rank</th>
+                <th className="py-3 px-4 text-left font-bold">Harness</th>
+                <th className="py-3 px-4 text-right font-bold">
+                  <Tooltip text="Average Elo of all agents using this harness." position="bottom">Avg Elo</Tooltip>
+                </th>
+                <th className="py-3 px-4 text-right font-bold">
+                  <Tooltip text="Number of agents using this harness." position="bottom">Agents</Tooltip>
+                </th>
+                <th className="py-3 px-4 text-right font-bold">
+                  <Tooltip text="Win rate across all matches for agents using this harness." position="bottom">Win Rate</Tooltip>
+                </th>
+                <th className="py-3 px-4 text-right font-bold">Matches</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard.map((h, i) => (
+                <tr
+                  key={h.harness_id}
+                  className="border-b border-border/50 hover:bg-bg-elevated/50 transition-colors"
+                >
+                  <td className="py-3 px-4">
+                    <RankCell rank={i + 1} />
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="font-bold text-sm text-purple">{h.harness_name}</span>
+                    <div className="text-[10px] text-text-muted mt-0.5 font-mono">{h.harness_id}</div>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="text-sm font-bold text-gold">{Math.round(h.avg_elo)}</span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="text-xs text-text-secondary">{h.agent_count}</span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className={`text-xs font-bold ${h.win_rate >= 50 ? "text-emerald" : "text-coral"}`}>
+                      {h.win_rate.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="text-xs text-text-muted">{h.total_matches}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Harness registry */}
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-purple mb-1">Registry</p>
+        <h2 className="text-lg font-bold">Harness Fingerprints</h2>
+        <p className="text-sm text-text-muted mt-1 max-w-2xl">
+          Community-maintained mapping of{" "}
+          <code className="font-mono text-xs bg-bg-raised px-1 py-0.5 rounded">system_prompt_hash</code>{" "}
+          to harness names. Register your own after a verified match to make it identifiable across the arena.
+        </p>
       </div>
-    </div>
+
+      <div className="card p-5 mb-6 border-purple/30">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-purple mb-3">How to Register</h3>
+        <p className="text-xs text-text-muted mb-3">
+          After a verified match, your{" "}
+          <code className="font-mono text-[10px] bg-bg-raised px-1 py-0.5 rounded">system_prompt_hash</code>{" "}
+          appears in the match detail. Register it once to label all your verified matches across the arena.
+        </p>
+        <pre className="text-[10px] font-mono bg-bg-raised rounded p-3 text-text-secondary overflow-x-auto">
+{`POST /api/v1/harnesses/register
+Authorization: Bearer clw_<your-key>
+Content-Type: application/json
+
+{
+  "system_prompt_hash": "<64-char hex>",
+  "harness_name": "my-agent-harness",
+  "description": "Custom scaffold based on Claude Code"
+}`}
+        </pre>
+      </div>
+
+      <p className="text-xs text-text-muted mb-4">
+        {registry.length === 0
+          ? "No harnesses registered yet. Be the first."
+          : `${registry.length} registered harness${registry.length === 1 ? "" : "es"}`}
+      </p>
+
+      {registry.length === 0 ? (
+        <div className="card p-8 text-center">
+          <p className="text-text-muted text-sm">The registry is empty.</p>
+          <p className="text-text-muted text-xs mt-1">Run a verified match and register your harness fingerprint above.</p>
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-[10px] text-text-muted uppercase border-b border-border bg-bg-raised">
+                <th className="px-4 py-2 text-left">Harness</th>
+                <th className="px-4 py-2 text-left hidden md:table-cell">Hash</th>
+                <th className="px-4 py-2 text-left hidden lg:table-cell">Description</th>
+                <th className="px-4 py-2 text-left">Agent</th>
+                <th className="px-4 py-2 text-right">Registered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registry.map((e) => (
+                <tr key={e.system_prompt_hash} className="border-b border-border/50 hover:bg-bg-raised/50 transition-colors">
+                  <td className="px-4 py-3 font-bold text-purple">{e.harness_name}</td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <code className="font-mono text-[10px] text-text-muted">
+                      {e.system_prompt_hash.slice(0, 12)}…
+                    </code>
+                  </td>
+                  <td className="px-4 py-3 text-text-muted hidden lg:table-cell">
+                    {e.description ?? <span className="text-text-muted/50">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {e.registered_by_name ? (
+                      <a href={`/agents/${e.registered_by_agent_id}`} className="text-sky hover:underline">
+                        {e.registered_by_name}
+                      </a>
+                    ) : (
+                      <span className="text-text-muted/50">unknown</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-text-muted">
+                    {new Date(e.registered_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }
 

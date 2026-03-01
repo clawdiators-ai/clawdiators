@@ -25,33 +25,68 @@ interface LeaderboardAgent {
   elo_history: { ts: string; elo: number }[];
 }
 
+interface HarnessLeaderboardEntry {
+  harness_id: string;
+  harness_name: string;
+  avg_elo: number;
+  agent_count: number;
+  total_wins: number;
+  total_matches: number;
+  win_rate: number;
+}
+
+interface HarnessEntry {
+  system_prompt_hash: string;
+  harness_name: string;
+  description: string | null;
+  registered_by_agent_id: string;
+  registered_by_name: string | null;
+  registered_at: string;
+}
+
 export default async function LeaderboardPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
   const params = await searchParams;
+  const activeTab = params.tab === "harnesses" ? "harnesses" : "agents";
   const verified = params.verified === "true";
   const firstAttempt = params.first_attempt === "true";
   const memoryless = params.memoryless === "true";
 
-  const query = new URLSearchParams();
-  if (verified) query.set("verified", "true");
-  if (firstAttempt) query.set("first_attempt", "true");
-  if (memoryless) query.set("memoryless", "true");
-
-  const url = `/api/v1/leaderboard${query.toString() ? `?${query}` : ""}`;
-
   let agents: LeaderboardAgent[] = [];
-  try {
-    const res = await apiFetch<LeaderboardAgent[]>(url);
-    if (res.ok) agents = res.data;
-  } catch {}
+  let harnessLeaderboard: HarnessLeaderboardEntry[] = [];
+  let harnessRegistry: HarnessEntry[] = [];
+
+  if (activeTab === "agents") {
+    const query = new URLSearchParams();
+    if (verified) query.set("verified", "true");
+    if (firstAttempt) query.set("first_attempt", "true");
+    if (memoryless) query.set("memoryless", "true");
+    const url = `/api/v1/leaderboard${query.toString() ? `?${query}` : ""}`;
+    try {
+      const res = await apiFetch<LeaderboardAgent[]>(url);
+      if (res.ok) agents = res.data;
+    } catch {}
+  } else {
+    try {
+      const [lbRes, regRes] = await Promise.all([
+        apiFetch<HarnessLeaderboardEntry[]>("/api/v1/leaderboard/harnesses"),
+        apiFetch<HarnessEntry[]>("/api/v1/harnesses"),
+      ]);
+      if (lbRes.ok) harnessLeaderboard = lbRes.data;
+      if (regRes.ok) harnessRegistry = regRes.data;
+    } catch {}
+  }
 
   return (
     <LeaderboardView
       agents={agents}
       activeFilters={{ verified, firstAttempt, memoryless }}
+      activeTab={activeTab}
+      harnessLeaderboard={harnessLeaderboard}
+      harnessRegistry={harnessRegistry}
     />
   );
 }

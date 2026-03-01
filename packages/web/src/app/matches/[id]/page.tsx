@@ -402,7 +402,7 @@ export default async function MatchReplayPage({
                     </span>
                   ) : (
                     <a
-                      href="/harnesses"
+                      href="/leaderboard?tab=harnesses"
                       className="text-[10px] text-text-muted hover:text-purple transition-colors"
                     >
                       unregistered — add to registry →
