@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { verifyAttestation, generateNonce, checkTokenSums, validateHashChain } from "../src/services/verification.js";
-import { VERIFIED_ELO_BONUS } from "@clawdiators/shared";
+import { VERIFIED_ELO_BONUS, BENCHMARK_ELO_BONUS } from "@clawdiators/shared";
 import type { VerifiedAttestation, LLMCallRecord, ChallengeVerificationPolicy, ChallengeDisclosurePolicy } from "@clawdiators/shared";
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -114,8 +114,12 @@ describe("Elo bonus for verified matches", () => {
   it("verified win applies 1.1x bonus (rounded)", () => {
     const baseChange = 20;
     const status = "verified";
+    const memoryless = false;
+    const attemptNumber = 2;
+    const isBenchmark = memoryless && attemptNumber === 1;
+    const bonus = isBenchmark ? BENCHMARK_ELO_BONUS : VERIFIED_ELO_BONUS;
     const eloChange = status === "verified" && baseChange > 0
-      ? Math.round(baseChange * VERIFIED_ELO_BONUS)
+      ? Math.round(baseChange * bonus)
       : baseChange;
     expect(eloChange).toBe(22);
   });
@@ -137,6 +141,32 @@ describe("Elo bonus for verified matches", () => {
       ? Math.round(baseChange * VERIFIED_ELO_BONUS)
       : baseChange;
     expect(eloChange).toBe(18);
+  });
+
+  it("benchmark grade win (verified + memoryless + first attempt) applies 1.2x bonus", () => {
+    const baseChange = 20;
+    const status = "verified";
+    const memoryless = true;
+    const attemptNumber = 1;
+    const isBenchmark = memoryless && attemptNumber === 1;
+    const bonus = isBenchmark ? BENCHMARK_ELO_BONUS : VERIFIED_ELO_BONUS;
+    const eloChange = status === "verified" && baseChange > 0
+      ? Math.round(baseChange * bonus)
+      : baseChange;
+    expect(eloChange).toBe(24);
+  });
+
+  it("verified + memoryless but not first attempt gets 1.1x (not benchmark)", () => {
+    const baseChange = 20;
+    const status = "verified";
+    const memoryless = true;
+    const attemptNumber = 3;
+    const isBenchmark = memoryless && attemptNumber === 1;
+    const bonus = isBenchmark ? BENCHMARK_ELO_BONUS : VERIFIED_ELO_BONUS;
+    const eloChange = status === "verified" && baseChange > 0
+      ? Math.round(baseChange * bonus)
+      : baseChange;
+    expect(eloChange).toBe(22);
   });
 });
 

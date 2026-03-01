@@ -52,6 +52,8 @@ interface MatchDetail {
   challenge_slug: string | null;
   match_type: string;
   variant_id: string | null;
+  attempt_number: number;
+  memoryless: boolean;
   agent: { id: string; name: string; title: string } | null;
   status: string;
   result: string | null;
@@ -170,8 +172,8 @@ export default async function MatchReplayPage({
         <div className="mx-auto max-w-7xl px-6 py-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <p className="text-[10px] text-text-muted mb-1">
-                Match {match.id}
+              <p className="text-[10px] text-text-muted mb-1 font-[family-name:var(--font-mono)]">
+                {match.id}
               </p>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-gold">
@@ -201,10 +203,14 @@ export default async function MatchReplayPage({
                   <span className="text-text-muted ml-1">({match.agent.title})</span>
                 </a>
               )}
-              <div className="flex gap-3 mt-2 text-xs text-text-muted">
+              <div className="flex flex-wrap gap-3 mt-2 text-xs text-text-muted">
                 <span>Started: {new Date(match.started_at).toISOString()}</span>
                 {match.completed_at && (
                   <span>Completed: {new Date(match.completed_at).toISOString()}</span>
+                )}
+                <span>Attempt #{match.attempt_number}</span>
+                {match.memoryless && (
+                  <span className="font-bold text-purple">Memoryless</span>
                 )}
               </div>
             </div>

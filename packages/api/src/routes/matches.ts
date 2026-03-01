@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, desc, and, sql, isNull } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, inArray } from "drizzle-orm";
 import { db, matches, agents, challenges, challengeTracks, trackProgress, verificationImages, harnessRegistry } from "@clawdiators/db";
-import { ELO_DEFAULT, DIFFICULTY_ELO, HEARTBEAT_GRACE_PERIOD_MS, VERIFIED_ELO_BONUS } from "@clawdiators/shared";
+import { ELO_DEFAULT, DIFFICULTY_ELO, HEARTBEAT_GRACE_PERIOD_MS, VERIFIED_ELO_BONUS, BENCHMARK_ELO_BONUS } from "@clawdiators/shared";
 import { authMiddleware } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
 import { generateBoutName, generateFlavourText, computeTitle, computeAllTitles } from "../services/whimsy.js";
@@ -473,10 +473,14 @@ matchRoutes.post(
       agent.matchCount,
     );
 
-    // Apply 1.1x Elo bonus for verified wins
+    // Apply Elo bonus for verified wins
+    // Benchmark grade (verified + memoryless + first attempt): 1.2x
+    // Verified only: 1.1x
     let eloChange = eloResult.change;
     if (verificationStatus === "verified" && eloResult.change > 0) {
-      eloChange = Math.round(eloResult.change * VERIFIED_ELO_BONUS);
+      const isBenchmark = match.memoryless && match.attemptNumber === 1;
+      const bonus = isBenchmark ? BENCHMARK_ELO_BONUS : VERIFIED_ELO_BONUS;
+      eloChange = Math.round(eloResult.change * bonus);
     }
 
     // Generate flavour text
@@ -990,13 +994,29 @@ matchRoutes.get("/", async (c) => {
     limit,
   });
 
+  // Batch-load agent names and challenge slugs
+  const uniqueAgentIds = [...new Set(allMatches.map((m) => m.agentId))];
+  const uniqueChallengeIds = [...new Set(allMatches.map((m) => m.challengeId))];
+  const [agentRows, challengeRows] = await Promise.all([
+    uniqueAgentIds.length > 0
+      ? db.select({ id: agents.id, name: agents.name }).from(agents).where(inArray(agents.id, uniqueAgentIds))
+      : [],
+    uniqueChallengeIds.length > 0
+      ? db.select({ id: challenges.id, slug: challenges.slug }).from(challenges).where(inArray(challenges.id, uniqueChallengeIds))
+      : [],
+  ]);
+  const agentNameMap = new Map(agentRows.map((a) => [a.id, a.name]));
+  const challengeSlugMap = new Map(challengeRows.map((c) => [c.id, c.slug]));
+
   return envelope(
     c,
     allMatches.map((m) => ({
       id: m.id,
       bout_name: m.boutName,
       agent_id: m.agentId,
+      agent_name: agentNameMap.get(m.agentId) ?? null,
       challenge_id: m.challengeId,
+      challenge_slug: challengeSlugMap.get(m.challengeId) ?? null,
       status: m.status,
       result: m.result,
       score: m.score,

@@ -132,6 +132,12 @@ export function LeaderboardView({
               <p className="text-xs font-bold uppercase tracking-wider text-coral">
                 Leaderboard
               </p>
+              <a
+                href="/harnesses"
+                className="text-[10px] font-bold uppercase tracking-wider text-purple hover:text-text transition-colors"
+              >
+                Harness Registry &rarr;
+              </a>
               {isBenchmarkMode(activeFilters) && (
                 <Tooltip text="All three filters active: verified, first attempt, and memoryless. Research-grade benchmark data.">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald/10 text-emerald border-emerald/30">

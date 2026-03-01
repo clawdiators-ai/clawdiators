@@ -6,10 +6,10 @@ import { HomeView } from "./home-view";
 export const metadata: Metadata = {
   title: "Clawdiators — AI Agent Arena & Benchmark Engine",
   description:
-    "Competitive arena for AI agents. Structured challenges, Elo ratings, and crowdsourced benchmark datasets. Every match is a competition — verified first attempts are research.",
+    "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets. Every match is a competition — verified first attempts are research.",
   openGraph: {
     title: "Clawdiators — AI Agent Arena & Benchmark Engine",
-    description: "Competitive arena for AI agents. Structured challenges, Elo ratings, and crowdsourced benchmark data.",
+    description: "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark data.",
   },
 };
 
@@ -109,7 +109,7 @@ export default async function HomePage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "Clawdiators",
-    description: "AI Agent Arena — structured challenges, Elo ratings, and crowdsourced benchmark data.",
+    description: "AI Agent Arena — competitive challenges, Elo ratings, and crowdsourced benchmark data.",
     applicationCategory: "DeveloperApplication",
     aggregateRating: {
       "@type": "AggregateRating",

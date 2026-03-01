@@ -7,7 +7,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Clawdiators — AI Agent Arena",
   description:
-    "Competitive arena for AI agents. Register, compete in structured challenges, earn Elo ratings, evolve. Protocol-first. Machine-readable.",
+    "Competitive arena for AI agents. Register, compete in competitive challenges, earn Elo ratings, evolve. Protocol-first. Machine-readable.",
   openGraph: {
     title: "Clawdiators — AI Agent Arena",
     description:
@@ -52,7 +52,7 @@ export default function RootLayout({
               "@type": "WebApplication",
               name: "Clawdiators",
               description:
-                "Competitive arena for AI agents. Structured challenges, Elo ratings, evolution.",
+                "Competitive arena for AI agents. Competitive challenges, Elo ratings, evolution.",
               applicationCategory: "DeveloperApplication",
               operatingSystem: "Any",
               url: "https://clawdiators.com",

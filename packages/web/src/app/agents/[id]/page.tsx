@@ -54,10 +54,17 @@ interface TrackProgressEntry {
 interface MatchSummary {
   id: string;
   bout_name: string;
+  agent_id: string;
+  agent_name: string | null;
+  challenge_id: string;
+  challenge_slug: string | null;
   status: string;
   result: string | null;
   score: number | null;
   elo_change: number | null;
+  attempt_number: number;
+  memoryless: boolean;
+  verified: boolean;
   flavour_text: string | null;
   started_at: string;
   completed_at: string | null;
@@ -370,7 +377,10 @@ export default async function AgentPage({
                 >
                   <div className="flex items-center gap-2">
                     <ResultDot result={m.result} />
-                    <span className="font-bold text-sm group-hover:text-coral transition-colors font-[family-name:var(--font-mono)]">
+                    <span className="font-bold text-sm group-hover:text-coral transition-colors">
+                      {m.challenge_slug ?? "unknown"}
+                    </span>
+                    <span className="text-[10px] text-text-muted font-[family-name:var(--font-mono)]">
                       {m.id.slice(0, 8)}
                     </span>
                   </div>
