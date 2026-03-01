@@ -21,7 +21,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 
 # ── Build proxy ────────────────────────────────────────────────────────
 WORKDIR /app/proxy
-COPY docker/arena-runner/proxy/package.json ./
+COPY docker/arena-runner/proxy/package.json docker/arena-runner/proxy/package-lock.json ./
 RUN npm ci --include=dev
 
 COPY docker/arena-runner/proxy/tsconfig.json ./
