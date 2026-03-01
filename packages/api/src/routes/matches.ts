@@ -92,8 +92,14 @@ matchRoutes.post(
               memoryless: existingActive.memoryless,
               constraints: existingChallenge?.constraints as Record<string, unknown> | null ?? null,
               verificationPolicy: existingChallenge?.verificationPolicy as { mode?: string; memorylessRecommended?: boolean } | null ?? null,
+              nonce: existingActive.verificationNonce ?? undefined,
+              proxyStartToken: existingActive.proxyStartToken ?? undefined,
+              matchId: existingActive.id,
             })
           : null;
+        const existingWorkspaceUrl = existingActive.verified
+          ? `/api/v1/challenges/${existingChallenge?.slug ?? challenge.slug}/workspace?seed=${existingActive.seed}&match_id=${existingActive.id}`
+          : `/api/v1/challenges/${existingChallenge?.slug ?? challenge.slug}/workspace?seed=${existingActive.seed}`;
         return envelope(c, {
           match_id: existingActive.id,
           bout_name: existingActive.boutName,
@@ -102,12 +108,18 @@ matchRoutes.post(
           time_limit_secs: existingChallenge?.timeLimitSecs ?? challenge.timeLimitSecs,
           expires_at: existingActive.expiresAt,
           match_type: existingChallenge?.matchType ?? challenge.matchType,
-          workspace_url: `/api/v1/challenges/${existingChallenge?.slug ?? challenge.slug}/workspace?seed=${existingActive.seed}`,
+          workspace_url: existingWorkspaceUrl,
           challenge_md: existingChallengeMd,
           submission_spec: existingMod?.submissionSpec ?? null,
           submit_url: `/api/v1/matches/${existingActive.id}/submit`,
           attempt_number: existingActive.attemptNumber,
           memoryless: existingActive.memoryless,
+          verified: existingActive.verified,
+          verification: existingActive.verified ? {
+            nonce: existingActive.verificationNonce,
+            proxy_start_token: existingActive.proxyStartToken ?? undefined,
+            proxy_active: !!existingActive.proxyActiveAt,
+          } : undefined,
           challenge: existingChallenge ? {
             slug: existingChallenge.slug,
             name: existingChallenge.name,
@@ -141,6 +153,7 @@ matchRoutes.post(
     const now = new Date();
     const expiresAt = new Date(now.getTime() + challenge.timeLimitSecs * 1000);
     const verificationNonce = verified ? generateNonce() : null;
+    const proxyStartToken = verified ? generateNonce() : null;
 
     // Look up the latest known-good arena-runner image digest for verified matches
     let knownImageDigest: string | null = null;
@@ -181,6 +194,7 @@ matchRoutes.post(
         memoryless,
         verified,
         verificationNonce,
+        proxyStartToken,
         verificationStatus: verified ? "pending" : "unverified",
       })
       .returning();
@@ -208,7 +222,9 @@ matchRoutes.post(
         time_limit_secs: challenge.timeLimitSecs,
         started_at: match.startedAt,
         expires_at: match.expiresAt,
-        workspace_url: `/api/v1/challenges/${challenge.slug}/workspace?seed=${seed}`,
+        workspace_url: verified
+          ? `/api/v1/challenges/${challenge.slug}/workspace?seed=${seed}&match_id=${match.id}`
+          : `/api/v1/challenges/${challenge.slug}/workspace?seed=${seed}`,
         challenge_md: mod.workspaceSpec?.challengeMd
           ? injectChallengeMdContext(mod.workspaceSpec.challengeMd, {
               seed,
@@ -217,6 +233,10 @@ matchRoutes.post(
               memoryless,
               constraints: challenge.constraints as Record<string, unknown> | null ?? null,
               verificationPolicy: challenge.verificationPolicy as { mode?: string; memorylessRecommended?: boolean } | null ?? null,
+              nonce: verificationNonce ?? undefined,
+              proxyStartToken: proxyStartToken ?? undefined,
+              matchId: match.id,
+              imageDigest: knownImageDigest ?? undefined,
             })
           : null,
         submission_spec: mod.submissionSpec ?? null,
@@ -226,6 +246,7 @@ matchRoutes.post(
         verified,
         verification: verified ? {
           nonce: verificationNonce,
+          proxy_start_token: proxyStartToken,
           image_digest: knownImageDigest ?? "sha256:unknown",
           image: "arena-runner:latest",
           runner_url: "ghcr.io/clawdiators/arena-runner:latest",
@@ -241,6 +262,41 @@ matchRoutes.post(
     );
   },
 );
+
+// POST /matches/:matchId/proxy-ready — arena-runner proxy calls this on startup to unlock the workspace
+matchRoutes.post("/:matchId/proxy-ready", async (c) => {
+  const matchId = c.req.param("matchId");
+
+  let body: { nonce?: string; proxy_start_token?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return errorEnvelope(c, "Invalid JSON body", 400);
+  }
+
+  const { nonce, proxy_start_token } = body;
+  if (!nonce || !proxy_start_token) {
+    return errorEnvelope(c, "nonce and proxy_start_token are required", 400);
+  }
+
+  const match = await db.query.matches.findFirst({
+    where: eq(matches.id, matchId),
+  });
+  if (!match) return errorEnvelope(c, "Match not found", 404);
+  if (!match.verified) return errorEnvelope(c, "Match is not a verified match", 400);
+  if (match.status !== "active") return errorEnvelope(c, "Match is not active", 400);
+  if (match.proxyActiveAt) return errorEnvelope(c, "Proxy already registered for this match", 409);
+
+  if (nonce !== match.verificationNonce) return errorEnvelope(c, "Invalid nonce", 403, "The nonce does not match. Access denied.");
+  if (proxy_start_token !== match.proxyStartToken) return errorEnvelope(c, "Invalid proxy_start_token", 403, "The proxy start token does not match. Access denied.");
+
+  await db
+    .update(matches)
+    .set({ proxyActiveAt: new Date(), proxyStartToken: null })
+    .where(eq(matches.id, matchId));
+
+  return envelope(c, { ok: true }, 200, "Proxy registered. The arena watches.");
+});
 
 // POST /matches/:matchId/submit — submit answer
 const replayStepSchema = z.object({

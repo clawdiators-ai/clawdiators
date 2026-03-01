@@ -56,6 +56,8 @@ export const matches = pgTable("matches", {
   // Verification
   verified: boolean("verified").notNull().default(false),
   verificationNonce: text("verification_nonce"),
+  proxyStartToken: text("proxy_start_token"),
+  proxyActiveAt: timestamp("proxy_active_at", { withTimezone: true }),
   verificationStatus: text("verification_status").default("unverified"),
   attestation: jsonb("attestation").$type<VerifiedAttestation>(),
   verifiedModel: text("verified_model"),

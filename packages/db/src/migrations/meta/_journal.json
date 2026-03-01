@@ -113,6 +113,13 @@
       "when": 1773500000000,
       "tag": "0015_challenge_governance",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1773600000000,
+      "tag": "0016_proxy_gated_workspace",
+      "breakpoints": true
     }
   ]
 }

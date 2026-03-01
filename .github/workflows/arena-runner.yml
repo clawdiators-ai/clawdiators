@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - "arena-runner/v*"
+    branches:
+      - main
+    paths:
+      - "docker/arena-runner/**"
+  workflow_dispatch:
 
 jobs:
   build:

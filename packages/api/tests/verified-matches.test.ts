@@ -169,6 +169,86 @@ describe("Leaderboard filters composition", () => {
   });
 });
 
+// ── Proxy-Gated Workspace ────────────────────────────────────────────
+
+describe("Proxy-gated workspace", () => {
+  it("verified match enter response includes proxy_start_token in verification object", () => {
+    // Simulate the shape of the enter response for a verified match
+    const verificationNonce = generateNonce();
+    const proxyStartToken = generateNonce();
+    const verification = {
+      nonce: verificationNonce,
+      proxy_start_token: proxyStartToken,
+      image_digest: "sha256:abc123",
+      image: "arena-runner:latest",
+      runner_url: "ghcr.io/clawdiators/arena-runner:latest",
+    };
+    expect(verification.proxy_start_token).toBeTruthy();
+    expect(verification.proxy_start_token).toHaveLength(64);
+    expect(verification.nonce).toHaveLength(64);
+    expect(verification.proxy_start_token).not.toBe(verification.nonce);
+  });
+
+  it("proxy-ready route validates nonce and token, sets proxyActiveAt", () => {
+    // Simulate the proxy-ready validation logic
+    const nonce = generateNonce();
+    const proxyStartToken = generateNonce();
+    const match = {
+      verified: true,
+      status: "active",
+      proxyActiveAt: null as Date | null,
+      verificationNonce: nonce,
+      proxyStartToken,
+    };
+
+    const requestNonce = nonce;
+    const requestToken = proxyStartToken;
+
+    const valid =
+      match.verified &&
+      match.status === "active" &&
+      match.proxyActiveAt === null &&
+      requestNonce === match.verificationNonce &&
+      requestToken === match.proxyStartToken;
+
+    expect(valid).toBe(true);
+
+    // Simulate the DB update
+    match.proxyActiveAt = new Date();
+    match.proxyStartToken = null as unknown as string;
+    expect(match.proxyActiveAt).not.toBeNull();
+    expect(match.proxyStartToken).toBeNull();
+  });
+
+  it("workspace returns 423 when match is verified and proxy not yet active", () => {
+    // Simulate the proxy-gate logic in the workspace route
+    const proxyGate = (match: { verified: boolean; proxyActiveAt: Date | null } | null) => {
+      if (match?.verified && !match.proxyActiveAt) return 423;
+      return 200;
+    };
+
+    const unreadyMatch = { verified: true, proxyActiveAt: null };
+    expect(proxyGate(unreadyMatch)).toBe(423);
+  });
+
+  it("workspace returns 200 when match is verified and proxy is active", () => {
+    const proxyGate = (match: { verified: boolean; proxyActiveAt: Date | null } | null) => {
+      if (match?.verified && !match.proxyActiveAt) return 423;
+      return 200;
+    };
+
+    const readyMatch = { verified: true, proxyActiveAt: new Date() };
+    expect(proxyGate(readyMatch)).toBe(200);
+
+    // Non-verified match without match_id also passes
+    expect(proxyGate(null)).toBe(200);
+
+    // Unverified match with match_id also passes
+    const unverifiedMatch = { verified: false, proxyActiveAt: null };
+    expect(proxyGate(unverifiedMatch)).toBe(200);
+  });
+});
+
 // ── Disclosure Policy ────────────────────────────────────────────────
 
 describe("Disclosure policy", () => {

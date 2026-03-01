@@ -173,6 +173,21 @@ challengeRoutes.get("/:slug/workspace", async (c) => {
     return errorEnvelope(c, "Invalid seed parameter", 400);
   }
 
+  // Proxy-gated workspace: if a match_id is provided and the match is verified but
+  // the proxy hasn't registered yet, block the download with 423 Locked.
+  const matchIdParam = c.req.query("match_id");
+  if (matchIdParam) {
+    const match = await db.query.matches.findFirst({ where: eq(matches.id, matchIdParam) });
+    if (match?.verified && !match.proxyActiveAt) {
+      return errorEnvelope(
+        c,
+        "Proxy not yet active for this match. Start the arena-runner proxy first.",
+        423,
+        "The arena gate is sealed. Deploy the proxy to unlock the workspace.",
+      );
+    }
+  }
+
   try {
     const archive = buildWorkspaceArchive(mod, seed, challenge.config);
 

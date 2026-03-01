@@ -54,6 +54,7 @@ export interface MatchEntry {
   verified: boolean;
   verification?: {
     nonce: string;
+    proxy_start_token?: string;
     image_digest: string;
     image: string;
     runner_url: string;

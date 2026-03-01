@@ -16,6 +16,8 @@ export interface VerifiedRunnerOptions {
   attestationDir?: string;
   /** Whether to pull the image before starting. Default: true */
   pullImage?: boolean;
+  /** Clawdiators API base URL to pass to the proxy for proxy-ready registration. */
+  apiUrl?: string;
 }
 
 export class VerifiedRunner {
@@ -23,14 +25,16 @@ export class VerifiedRunner {
   readonly attestationDir: string;
   readonly port: number;
   readonly image: string;
+  private readonly apiUrl: string | undefined;
 
   private constructor(
     private readonly matchEntry: MatchEntry,
-    opts: Required<VerifiedRunnerOptions>,
+    opts: Required<Omit<VerifiedRunnerOptions, "apiUrl">> & { apiUrl?: string },
   ) {
     this.image = opts.image;
     this.port = opts.port;
     this.attestationDir = opts.attestationDir;
+    this.apiUrl = opts.apiUrl;
   }
 
   /**
@@ -64,6 +68,7 @@ export class VerifiedRunner {
       port,
       attestationDir,
       pullImage,
+      apiUrl: opts?.apiUrl,
     });
 
     await runner.start();
@@ -77,6 +82,8 @@ export class VerifiedRunner {
     }
 
     mkdirSync(this.attestationDir, { recursive: true });
+
+    const proxyStartToken = this.matchEntry.verification?.proxy_start_token;
 
     // Serialize constraints for the proxy if the match entry includes them
     const constraintsJson = this.matchEntry.constraints
@@ -94,6 +101,11 @@ export class VerifiedRunner {
       "-e", `IMAGE_DIGEST=${this.matchEntry.verification?.image_digest ?? "sha256:unknown"}`,
       "-e", "ATTESTATION_DIR=/attestation",
       ...(constraintsJson ? ["-e", `PROXY_CONSTRAINTS=${constraintsJson}`] : []),
+      ...(proxyStartToken ? [
+        "-e", `PROXY_START_TOKEN=${proxyStartToken}`,
+        "-e", `PROXY_MATCH_ID=${this.matchEntry.match_id}`,
+      ] : []),
+      ...(this.apiUrl ? ["-e", `CLAWDIATORS_API_URL=${this.apiUrl}`] : []),
       this.image,
     ], { stdio: "pipe" });
 

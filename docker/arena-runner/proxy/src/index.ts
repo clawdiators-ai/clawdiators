@@ -459,6 +459,9 @@ server.on("connect", handleConnect);
 
 // Load live pricing from Clawdiators API before starting (best-effort; falls back to hardcoded)
 const CLAWDIATORS_API_URL = process.env.CLAWDIATORS_API_URL;
+const MATCH_ID = process.env.PROXY_MATCH_ID;
+const PROXY_START_TOKEN_VALUE = process.env.PROXY_START_TOKEN;
+
 const startup = CLAWDIATORS_API_URL
   ? loadPricingFromAPI(CLAWDIATORS_API_URL)
   : Promise.resolve();
@@ -468,6 +471,21 @@ startup.finally(() => {
     console.log(`[proxy] Listening on port ${PORT}`);
     console.log(`[proxy] Nonce: ${NONCE}`);
     console.log(`[proxy] Attestation dir: ${ATTESTATION_DIR}`);
+
+    // Fire-and-forget proxy-ready registration to unlock the workspace
+    if (MATCH_ID && PROXY_START_TOKEN_VALUE && CLAWDIATORS_API_URL) {
+      void fetch(`${CLAWDIATORS_API_URL}/api/v1/matches/${MATCH_ID}/proxy-ready`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nonce: NONCE, proxy_start_token: PROXY_START_TOKEN_VALUE }),
+      }).then(async (res) => {
+        if (res.ok) {
+          console.log(`[proxy] Registered with Clawdiators API for match ${MATCH_ID}`);
+        } else {
+          console.error(`[proxy] Failed to register: ${res.status} ${await res.text().catch(() => "")}`);
+        }
+      }).catch((err) => console.error(`[proxy] Registration error:`, err));
+    }
   });
 });
 

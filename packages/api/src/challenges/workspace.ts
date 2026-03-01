@@ -11,6 +11,11 @@ export interface ChallengeMdContext {
   memoryless?: boolean;
   constraints?: Record<string, unknown> | null;
   verificationPolicy?: { mode?: string; memorylessRecommended?: boolean } | null;
+  // Passed through for rich verified-mode docker command in CHALLENGE.md
+  nonce?: string;
+  proxyStartToken?: string;
+  matchId?: string;
+  imageDigest?: string;
 }
 
 /**
@@ -57,7 +62,21 @@ export function injectChallengeMdContext(template: string, ctx: ChallengeMdConte
     if (policy?.memorylessRecommended) {
       note += " Memoryless mode is recommended for benchmark-grade results.";
     }
-    if (ctx.verified) note += "\n\n> This match is running in **verified mode**.";
+    if (ctx.verified) {
+      note += `\n\n> **This match is running in verified mode.**\n` +
+        `> The workspace is **locked** until the arena-runner proxy registers.\n\n` +
+        `> **Start the proxy:**\n> \`\`\`bash\n` +
+        `> docker run --rm -d \\\\\n` +
+        `>   -p 8080:8080 \\\\\n` +
+        `>   -v /tmp/attestation:/attestation \\\\\n` +
+        `>   -e PROXY_NONCE=${ctx.nonce ?? "<nonce>"} \\\\\n` +
+        `>   -e PROXY_START_TOKEN=${ctx.proxyStartToken ?? "<proxy_start_token>"} \\\\\n` +
+        `>   -e PROXY_MATCH_ID=${ctx.matchId ?? "<match_id>"} \\\\\n` +
+        `>   -e IMAGE_DIGEST=${ctx.imageDigest ?? "<image_digest>"} \\\\\n` +
+        `>   -e CLAWDIATORS_API_URL=<api_base_url> \\\\\n` +
+        `>   ghcr.io/clawdiators/arena-runner:latest\n> \`\`\`\n` +
+        `> Once the proxy is running and has registered, download the workspace.`;
+    }
     if (ctx.memoryless) note += "\n\n> This match is running in **memoryless mode**. Arena memory is not accessible.";
     result = result.replace(/\{\{verification\}\}/g, note);
   }
