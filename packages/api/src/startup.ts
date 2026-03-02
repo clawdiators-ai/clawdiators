@@ -23,8 +23,8 @@ let DESIGN_GUIDE_HASH_COMPUTED_AT = "";
 export async function computeDesignGuideHash(): Promise<void> {
   try {
     const thisFile = fileURLToPath(import.meta.url);
-    // packages/api/src/startup.ts → up 4 dirs to repo root
-    const repoRoot = join(thisFile, "..", "..", "..", "..", "..");
+    // packages/api/src/startup.ts → up 4 levels to repo root
+    const repoRoot = join(thisFile, "..", "..", "..", "..");
     const guidePath = join(repoRoot, "docs", "challenge-design-guide.md");
     const content = await readFile(guidePath, "utf8");
     DESIGN_GUIDE_HASH = createHash("sha256").update(content).digest("hex");

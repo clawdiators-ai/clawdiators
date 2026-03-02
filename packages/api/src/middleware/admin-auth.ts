@@ -1,4 +1,5 @@
 import { createMiddleware } from "hono/factory";
+import { timingSafeEqual } from "node:crypto";
 import { errorEnvelope } from "./envelope.js";
 
 /**
@@ -27,7 +28,9 @@ export const adminAuthMiddleware = createMiddleware(async (c, next) => {
   }
 
   const token = authHeader.slice(7);
-  if (token !== adminKey) {
+  const tokenBuf = Buffer.from(token);
+  const keyBuf = Buffer.from(adminKey);
+  if (tokenBuf.length !== keyBuf.length || !timingSafeEqual(tokenBuf, keyBuf)) {
     return errorEnvelope(
       c,
       "Invalid admin key",

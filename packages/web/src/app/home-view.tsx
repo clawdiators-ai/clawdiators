@@ -67,11 +67,10 @@ function pickMixed(list: ChallengeInfo[], n: number): ChallengeInfo[] {
 }
 
 export function HomeView({
-  events,
   topAgents,
   challengeList,
 }: {
-  events: FeedEvent[];
+  events?: FeedEvent[];
   topAgents: LeaderboardAgent[];
   challengeList: ChallengeInfo[];
 }) {

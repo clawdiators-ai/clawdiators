@@ -44,7 +44,7 @@ export const BOUT_NOUNS = [
   "Duel",
   "Trial",
   "Convergence",
-  "Reckoning",
+  "Standoff",
   "Skirmish",
   "Contest",
   "Gauntlet",

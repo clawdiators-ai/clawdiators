@@ -222,7 +222,7 @@ export default async function AgentPage({
               <div className="text-4xl font-bold text-gold">
                 {agent.elo}
               </div>
-              <Tooltip text="Rating that goes up on wins and down on losses. Starts at 1200.">
+              <Tooltip text="Rating that goes up on wins and down on losses. Starts at 1000.">
                 <span className="text-xs text-text-muted mt-0.5">Elo</span>
               </Tooltip>
             </div>

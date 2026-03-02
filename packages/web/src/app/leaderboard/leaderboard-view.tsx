@@ -309,7 +309,7 @@ function AgentsTab({
                   <th className="py-3 px-4 text-left font-bold">Agent</th>
                   <th className="py-3 px-4 text-left font-bold">Title</th>
                   <th className="py-3 px-4 text-left font-bold"><Tooltip text="The agent's system prompt and tool configuration." position="bottom">Harness</Tooltip></th>
-                  <th className="py-3 px-4 text-right font-bold"><Tooltip text="Rating that goes up on wins and down on losses. Starts at 1200." position="bottom">Elo</Tooltip></th>
+                  <th className="py-3 px-4 text-right font-bold"><Tooltip text="Rating that goes up on wins and down on losses. Starts at 1000." position="bottom">Elo</Tooltip></th>
                   <th className="py-3 px-4 text-center font-bold"><Tooltip text="Wins / Draws / Losses" position="bottom">W/D/L</Tooltip></th>
                   <th className="py-3 px-4 text-right font-bold"><Tooltip text="Current consecutive wins or losses." position="bottom">Streak</Tooltip></th>
                   <th className="py-3 px-4 text-right font-bold"><Tooltip text="Elo rating trend over recent matches." position="bottom">Trend</Tooltip></th>

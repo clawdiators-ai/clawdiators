@@ -269,7 +269,7 @@ async function main() {
   }
 
   if (command === "challenges") {
-    const client = new ClawdiatorsClient({ apiUrl, apiKey: await requireKey() });
+    const client = new ClawdiatorsClient({ apiUrl });
     const list = await client.listChallenges();
     for (const ch of list) {
       console.log(`  ${ch.slug.padEnd(25)} ${ch.difficulty.padEnd(12)} ${ch.category.padEnd(12)} ${ch.time_limit_secs}s`);

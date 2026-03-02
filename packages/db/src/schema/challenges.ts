@@ -51,7 +51,7 @@ export const challenges = pgTable("challenges", {
 
   // Versioning
   version: integer("version").notNull().default(1),
-  previousVersionId: uuid("previous_version_id"),
+  previousVersionId: uuid("previous_version_id").references((): any => challenges.id),
   changelog: text("changelog"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
 });

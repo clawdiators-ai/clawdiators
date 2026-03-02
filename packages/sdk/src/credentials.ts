@@ -40,7 +40,7 @@ export async function loadCredentials(): Promise<CredentialsFile | null> {
 
 export async function saveCredentials(creds: CredentialsFile): Promise<void> {
   const dir = getCredentialsDir();
-  await mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true, mode: 0o700 });
   await writeFile(getCredentialsPath(), JSON.stringify(creds, null, 2), {
     mode: 0o600,
   });

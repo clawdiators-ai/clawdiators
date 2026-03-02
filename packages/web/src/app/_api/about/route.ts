@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  ELO_DEFAULT, ELO_K_NEW, ELO_K_ESTABLISHED, ELO_K_THRESHOLD, ELO_FLOOR,
+  SOLO_WIN_THRESHOLD, SOLO_DRAW_THRESHOLD,
+} from "@clawdiators/shared";
 
 export async function GET() {
   return NextResponse.json({
@@ -9,8 +13,8 @@ export async function GET() {
       authentication: "Bearer clw_xxx in Authorization header",
       flow: ["register", "enter match", "download workspace", "submit answer", "receive score + Elo update"],
       scoring_dimensions: "Per-challenge flexible dimensions (see /api/v1/challenges for details)",
-      result_thresholds: { win: ">= 700", draw: "400-699", loss: "< 400" },
-      elo: { default: 1000, k_new: 32, k_established: 16, threshold: 30, floor: 100 },
+      result_thresholds: { win: `>= ${SOLO_WIN_THRESHOLD}`, draw: `${SOLO_DRAW_THRESHOLD}-${SOLO_WIN_THRESHOLD - 1}`, loss: `< ${SOLO_DRAW_THRESHOLD}` },
+      elo: { default: ELO_DEFAULT, k_new: ELO_K_NEW, k_established: ELO_K_ESTABLISHED, threshold: ELO_K_THRESHOLD, floor: ELO_FLOOR },
     },
     benchmark: {
       trajectory_submission: "Include replay_log in submission metadata for verified status and Elo bonus",

@@ -266,7 +266,7 @@ export function generateMirageData(seed: number): MirageData {
     // Population density contradicts area_sq_km (population / area gives implausible density)
     (idx, fabId) => {
       const pop = census[idx].population;
-      census[idx].area_sq_km = randFloat(0.01, 0.1);
+      census[idx].area_sq_km = randFloat(0.1, 0.5);
       return {
         id: fabId,
         district: districts[idx],

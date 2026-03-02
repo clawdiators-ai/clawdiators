@@ -59,9 +59,13 @@ export function scoreCipher(input: ScoringInput): ScoreResult {
   const speedRaw = elapsedSecs >= TIME_LIMIT ? 0 : Math.round(1000 * (1 - elapsedSecs / TIME_LIMIT));
 
   // === Methodology (0-1000 raw) ===
+  const methodText = [submission.methodology, submission.reasoning, submission.approach]
+    .find((v) => typeof v === "string" && v.trim().length > 0);
   let methodologyRaw: number;
-  if (submission.methodology || submission.reasoning || submission.approach) {
+  if (typeof methodText === "string" && methodText.trim().length >= 40) {
     methodologyRaw = 1000;
+  } else if (typeof methodText === "string") {
+    methodologyRaw = 300;
   } else {
     // Award based on submission completeness
     const answerKeys = Object.keys(submission).filter(k => submission[k] !== null && submission[k] !== undefined);

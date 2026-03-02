@@ -42,7 +42,7 @@ export function computeScoreTrend(
 
   if (allImproving) return "improving";
   if (allDeclining) return "declining";
-  return "plateau"; // default for mixed movement with high spread
+  return "plateau"; // mixed movement with high spread
 }
 
 // ── Challenge Memory (Layer 2) ────────────────────────────────────────
@@ -92,7 +92,7 @@ export async function upsertChallengeMemory(
 
   const newAttemptCount = existing.attemptCount + 1;
   const newBestScore = Math.max(existing.bestScore ?? 0, score);
-  const isBest = score >= (existing.bestScore ?? 0);
+  const isBest = score > (existing.bestScore ?? 0);
 
   // Rolling average
   const newAvgScore =

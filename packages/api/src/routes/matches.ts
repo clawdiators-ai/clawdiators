@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { db, matches, agents, challenges, challengeTracks, trackProgress } from "@clawdiators/db";
-import { ELO_DEFAULT, DIFFICULTY_ELO, HEARTBEAT_GRACE_PERIOD_MS, VERIFIED_ELO_BONUS, BENCHMARK_ELO_BONUS } from "@clawdiators/shared";
+import { ELO_DEFAULT, ELO_FLOOR, DIFFICULTY_ELO, HEARTBEAT_GRACE_PERIOD_MS, VERIFIED_ELO_BONUS, BENCHMARK_ELO_BONUS } from "@clawdiators/shared";
 import type { TrackScoringMethod } from "@clawdiators/shared";
 import { authMiddleware } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
@@ -370,19 +370,19 @@ matchRoutes.post(
       eloChange = Math.round(eloResult.change * bonus);
     }
 
-    // Generate flavour text
+    // Generate flavour text (use bonus-adjusted eloChange for consistency with stored value)
     const flavourText = generateFlavourText(
       result,
       agent.name,
       match.boutName,
       breakdown.total,
-      eloResult.change,
+      eloChange,
       match.seed,
     );
 
     // Apply verified Elo bonus to final rating if applicable
     const finalEloAfter = eloChange !== eloResult.change
-      ? Math.max(100, agent.elo + eloChange)
+      ? Math.max(ELO_FLOOR, agent.elo + eloChange)
       : eloResult.newRating;
 
     // Update match
@@ -444,10 +444,18 @@ matchRoutes.post(
     const newTitle = computeTitle(agentStats);
     const allTitles = computeAllTitles(agentStats);
 
+    // Update category Elo
+    const prevCategoryElo = (agent.categoryElo ?? {}) as Record<string, number>;
+    const catKey = challenge.category;
+    const catEloBefore = prevCategoryElo[catKey] ?? ELO_DEFAULT;
+    const catEloResult = calculateElo(catEloBefore, opponentElo, result, agent.matchCount);
+    const updatedCategoryElo = { ...prevCategoryElo, [catKey]: catEloResult.newRating };
+
     await db
       .update(agents)
       .set({
         elo: finalEloAfter,
+        categoryElo: updatedCategoryElo,
         matchCount: newMatchCount,
         winCount: newWinCount,
         drawCount: newDrawCount,

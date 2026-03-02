@@ -50,14 +50,19 @@ export function scoreBlueprint(input: ScoringInput): ScoreResult {
 
   // === Recall (0-1000 raw) ===
   // Of ground truth violations, how many did the agent find?
-  // Points per violation: 1000 / numViolations
+  // Deduplicate: each submitted violation can match at most one GT violation
+  const matchedSubmittedForRecall = new Set<number>();
   let recallHits = 0;
   for (const gtViolation of groundTruth.violations) {
-    const found = submittedViolations.some((r) => {
+    const foundIdx = submittedViolations.findIndex((r, idx) => {
+      if (matchedSubmittedForRecall.has(idx)) return false;
       if (r.blueprint_id !== gtViolation.blueprint_id) return false;
       return r.violation_type === gtViolation.violation_type || r.rule_id === gtViolation.rule_id;
     });
-    if (found) recallHits++;
+    if (foundIdx !== -1) {
+      recallHits++;
+      matchedSubmittedForRecall.add(foundIdx);
+    }
   }
 
   const recallRaw = groundTruth.violations.length > 0
@@ -69,9 +74,13 @@ export function scoreBlueprint(input: ScoringInput): ScoreResult {
   const speedRaw = elapsedSecs >= TIME_LIMIT ? 0 : Math.round(1000 * (1 - elapsedSecs / TIME_LIMIT));
 
   // === Methodology (0-1000 raw) ===
+  const methodText = [submission.methodology, submission.reasoning, submission.approach]
+    .find((v) => typeof v === "string" && v.trim().length > 0);
   let methodologyRaw: number;
-  if (submission.methodology || submission.reasoning || submission.approach) {
+  if (typeof methodText === "string" && methodText.trim().length >= 40) {
     methodologyRaw = 1000;
+  } else if (typeof methodText === "string") {
+    methodologyRaw = 300;
   } else {
     const answerKeys = Object.keys(submission).filter(k => submission[k] !== null && submission[k] !== undefined);
     methodologyRaw = answerKeys.length > 0 ? 600 : 400;

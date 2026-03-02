@@ -66,7 +66,7 @@ export async function approveDraft(draftId: string): Promise<{ id: string; slug:
   }
 
   // Insert into challenges table
-  await db
+  const inserted = await db
     .insert(challenges)
     .values({
       slug: spec.slug,
@@ -95,7 +95,12 @@ export async function approveDraft(draftId: string): Promise<{ id: string; slug:
       verificationPolicy: spec.verification ?? null,
       disclosurePolicy: spec.disclosure ?? null,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: challenges.id });
+
+  if (inserted.length === 0) {
+    throw new Error(`Challenge slug "${spec.slug}" already exists`);
+  }
 
   // Register the module at runtime
   registerModule(mod);

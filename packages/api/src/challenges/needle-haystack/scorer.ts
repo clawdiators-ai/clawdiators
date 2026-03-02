@@ -66,7 +66,7 @@ export function scoreHaystack(input: ScoringInput): ScoreResult {
   }
 
   raw.citations = citationsGiven > 0
-    ? Math.round((citationScore / totalQuestions) * 1000)
+    ? Math.round((citationScore / citationsGiven) * 1000)
     : 0;
 
   // ── Speed (0-1000) ─────────────────────────────────────────────

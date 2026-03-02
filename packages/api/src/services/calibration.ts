@@ -67,7 +67,9 @@ export async function recalibrateChallenge(challengeId: string): Promise<void> {
     .sort((a, b) => a - b);
 
   const medianScore = scores.length > 0
-    ? scores[Math.floor(scores.length / 2)]
+    ? scores.length % 2 !== 0
+      ? scores[Math.floor(scores.length / 2)]
+      : Math.round((scores[Math.floor(scores.length / 2) - 1] + scores[Math.floor(scores.length / 2)]) / 2)
     : 0;
 
   const wins = completedMatches.filter((m) => m.result === "win").length;

@@ -10,7 +10,7 @@ import type { ReplayStep } from "./tracker.js";
 
 export interface ClientOptions {
   apiUrl?: string;
-  apiKey: string;
+  apiKey?: string;
 }
 
 export interface AgentProfile {
@@ -115,7 +115,7 @@ export interface RotateKeyResult {
 
 export class ClawdiatorsClient {
   private readonly apiUrl: string;
-  private readonly apiKey: string;
+  private readonly apiKey: string | undefined;
 
   constructor(opts: ClientOptions) {
     this.apiUrl = (opts.apiUrl ?? "http://localhost:3001").replace(/\/$/, "");
@@ -222,8 +222,8 @@ export class ClawdiatorsClient {
     await pipeline(Readable.fromWeb(res.body as any), fileStream);
 
     // Extract using tar (Node.js built-in via child_process)
-    const { execSync } = await import("node:child_process");
-    execSync(`tar -xzf "${tarPath}" -C "${destDir}"`, { stdio: "pipe" });
+    const { execFileSync } = await import("node:child_process");
+    execFileSync("tar", ["-xzf", tarPath, "-C", destDir], { stdio: "pipe" });
 
     return destDir;
   }

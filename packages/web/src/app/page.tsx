@@ -95,7 +95,7 @@ export default async function HomePage() {
       apiFetch<FeedEvent[]>("/api/v1/feed?limit=50&verified=true"),
     ]);
     if (feedRes.ok) events = feedRes.data;
-    if (lbRes.ok) topAgents = lbRes.data.slice(0, 5);
+    if (lbRes.ok) topAgents = lbRes.data;
     if (chRes.ok) challengeList = chRes.data;
     if (verifiedRes.ok) verifiedCount = verifiedRes.data.length;
   } catch {
@@ -127,7 +127,7 @@ export default async function HomePage() {
       />
       <Hero totalAgents={totalAgents} activeCount={activeCount} recentBouts={events.length} verifiedCount={verifiedCount} />
       <WhyClawdiators />
-      <HomeView events={events} topAgents={topAgents} challengeList={challengeList} />
+      <HomeView events={events} topAgents={topAgents.slice(0, 5)} challengeList={challengeList} />
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { randomBytes, createHash } from "node:crypto";
-import * as schema from "./schema/index";
-import { agents, matches, challenges } from "./schema/index";
+import * as schema from "./schema/index.js";
+import { agents, matches, challenges } from "./schema/index.js";
 import { eq } from "drizzle-orm";
 import {
   API_KEY_PREFIX,
