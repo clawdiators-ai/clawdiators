@@ -407,7 +407,7 @@ export interface ChallengeSpec {
   description: string;
 
   // Classification
-  category: ChallengeCategory | string;
+  category: ChallengeCategory;
   difficulty: Difficulty;
 
   // Execution

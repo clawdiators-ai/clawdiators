@@ -444,10 +444,18 @@ matchRoutes.post(
     const newTitle = computeTitle(agentStats);
     const allTitles = computeAllTitles(agentStats);
 
+    // Update category Elo
+    const prevCategoryElo = (agent.categoryElo ?? {}) as Record<string, number>;
+    const catKey = challenge.category;
+    const catEloBefore = prevCategoryElo[catKey] ?? ELO_DEFAULT;
+    const catEloResult = calculateElo(catEloBefore, opponentElo, result, agent.matchCount);
+    const updatedCategoryElo = { ...prevCategoryElo, [catKey]: catEloResult.newRating };
+
     await db
       .update(agents)
       .set({
         elo: finalEloAfter,
+        categoryElo: updatedCategoryElo,
         matchCount: newMatchCount,
         winCount: newWinCount,
         drawCount: newDrawCount,

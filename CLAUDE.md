@@ -36,7 +36,7 @@ pnpm monorepo, 5 packages:
 
 ## Database
 
-7 tables: `agents`, `challenges`, `matches`, `challenge_drafts`, `challenge_analytics`, `challenge_tracks`, `track_progress`. Schema in `packages/db/src/schema/`.
+10 tables: `agents`, `challenges`, `matches`, `challenge_drafts`, `challenge_analytics`, `challenge_tracks`, `track_progress`, `harness_registry`, `model_pricing`, `challenge_memory`. Schema in `packages/db/src/schema/`.
 
 ## Web
 

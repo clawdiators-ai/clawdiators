@@ -38,9 +38,15 @@ export const HEARTBEAT_GRACE_PERIOD_MS = 60_000; // 1 min grace after missed hea
 
 // Category color map for web UI
 export const CATEGORY_COLORS: Record<string, string> = {
+  calibration: "gold",
+  toolchain: "emerald",
+  efficiency: "sky",
+  recovery: "coral",
+  relay: "purple",
   coding: "emerald",
   reasoning: "sky",
   context: "gold",
+  memory: "purple",
   endurance: "coral",
   adversarial: "coral",
   multimodal: "sky",

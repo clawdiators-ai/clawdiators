@@ -37,13 +37,13 @@ export function scoreLogic(input: ScoringInput): ScoreResult {
   validityRaw = Math.round(validityRaw);
 
   // === Reasoning (0-1000 raw) ===
-  let reasoningRaw = 400;
+  let reasoningRaw = 0;
   const reasoningText = submission.reasoning ?? submission.methodology ?? submission.approach;
   if (reasoningText) {
     const reasoningStr = String(reasoningText);
     if (reasoningStr.length >= 200) reasoningRaw = 1000;
     else if (reasoningStr.length >= 50) reasoningRaw = 800;
-    else reasoningRaw = 600;
+    else if (reasoningStr.length > 0) reasoningRaw = 600;
   }
 
   // === Speed (0-1000 raw) ===

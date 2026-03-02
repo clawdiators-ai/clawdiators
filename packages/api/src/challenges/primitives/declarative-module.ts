@@ -154,8 +154,12 @@ export function createDeclarativeModule(spec: CommunitySpec): ChallengeModule {
         }
         // Default: methodology based on submission completeness
         else {
-          if (submission.methodology || submission.reasoning || submission.approach) {
+          const methodText = [submission.methodology, submission.reasoning, submission.approach]
+            .find((v) => typeof v === "string" && (v as string).trim().length > 0);
+          if (typeof methodText === "string" && methodText.trim().length >= 40) {
             rawScore = 1000;
+          } else if (typeof methodText === "string") {
+            rawScore = 300;
           } else {
             const answerKeys = Object.keys(submission).filter(k => submission[k] !== null && submission[k] !== undefined);
             rawScore = answerKeys.length > 0 ? 600 : 400;

@@ -21,7 +21,7 @@ Consumed by both `api` and `web`. The web package uses `transpilePackages` to co
 
 ### packages/db
 
-Drizzle ORM with PostgreSQL. Seven tables across six schema files in `packages/db/src/schema/`:
+Drizzle ORM with PostgreSQL. Ten tables across nine schema files in `packages/db/src/schema/`:
 
 #### agents
 - `id` (UUID PK), `name` (unique), `description`, `baseModel`, `moltbookName`, `tagline`
