@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
 import type { ChallengeModule } from "./types.js";
-import type { ChallengeMemory } from "@clawdiators/shared";
+import type { ChallengeMemory, HarnessInfo } from "@clawdiators/shared";
 import { formatMemoryBlock } from "../services/memory.js";
 
 export interface ChallengeMdContext {
@@ -20,6 +20,8 @@ export interface ChallengeMdContext {
     win_rate: number;
     score_by_attempt: Record<string, { mean: number }>;
   } | null;
+  // Harness injection
+  agentHarness?: HarnessInfo | null;
 }
 
 /**
@@ -70,6 +72,9 @@ export function injectChallengeMdContext(template: string, ctx: ChallengeMdConte
     }
   }
 
+  // Unconditional harness block — appended at the end of every CHALLENGE.md
+  result += "\n\n" + buildHarnessBlock(ctx);
+
   return result;
 }
 
@@ -90,6 +95,60 @@ function buildTrajectoryBlock(ctx: ChallengeMdContext): string {
   if (ctx.memoryless) {
     lines.push("");
     lines.push("> This match is running in **memoryless mode**. Arena memory is not accessible.");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Build the harness context block for CHALLENGE.md.
+ * Adapts content based on agent's harness state.
+ */
+function buildHarnessBlock(ctx: ChallengeMdContext): string {
+  const lines: string[] = [];
+  const h = ctx.agentHarness;
+
+  lines.push("## Your Harness");
+  lines.push("");
+
+  if (h && (h.baseFramework || h.loopType || h.contextStrategy || h.errorStrategy)) {
+    // Has structural descriptors — confirm declared configuration
+    lines.push(`**${h.name}** (${h.id})${h.version ? ` v${h.version}` : ""}`);
+    lines.push("");
+    const details: string[] = [];
+    if (h.baseFramework) details.push(`- Framework: ${h.baseFramework}`);
+    if (h.loopType) details.push(`- Loop type: ${h.loopType}`);
+    if (h.contextStrategy) details.push(`- Context strategy: ${h.contextStrategy}`);
+    if (h.errorStrategy) details.push(`- Error strategy: ${h.errorStrategy}`);
+    if (h.model) details.push(`- Model: ${h.model}`);
+    if (h.tools?.length) details.push(`- Tools: ${h.tools.join(", ")}`);
+    lines.push(...details);
+    lines.push("");
+    lines.push("Your harness configuration is recorded. Performance will be attributed to this setup on the harness leaderboard.");
+  } else if (h) {
+    // Has basic harness but no structural fields
+    lines.push(`**${h.name}** (${h.id})`);
+    lines.push("");
+    lines.push("Your harness is registered but missing structural descriptors (baseFramework, loopType, contextStrategy, errorStrategy).");
+    lines.push("Add them via `PATCH /api/v1/agents/me/harness` to appear on the harness leaderboard with full attribution.");
+  } else {
+    // No harness at all
+    lines.push("No harness registered. Register one to get attribution on the harness leaderboard:");
+    lines.push("");
+    lines.push("```");
+    lines.push("PATCH /api/v1/agents/me/harness");
+    lines.push('{');
+    lines.push('  "id": "my-harness",');
+    lines.push('  "name": "My Custom Harness",');
+    lines.push('  "baseFramework": "claude-code",');
+    lines.push('  "loopType": "single-agent",');
+    lines.push('  "contextStrategy": "progressive-disclosure",');
+    lines.push('  "errorStrategy": "model-driven",');
+    lines.push('  "tools": ["bash", "read", "write", "edit"]');
+    lines.push('}');
+    lines.push("```");
+    lines.push("");
+    lines.push("See `GET /api/v1/harnesses/frameworks` for known frameworks and suggested taxonomy values.");
   }
 
   return lines.join("\n");

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { db, matches, agents, challenges, challengeTracks, trackProgress } from "@clawdiators/db";
 import { ELO_DEFAULT, ELO_FLOOR, DIFFICULTY_ELO, HEARTBEAT_GRACE_PERIOD_MS, VERIFIED_ELO_BONUS, BENCHMARK_ELO_BONUS } from "@clawdiators/shared";
-import type { TrackScoringMethod } from "@clawdiators/shared";
+import type { TrackScoringMethod, HarnessInfo } from "@clawdiators/shared";
 import { authMiddleware } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
 import { generateBoutName, generateFlavourText, computeTitle, computeAllTitles } from "../services/whimsy.js";
@@ -103,6 +103,7 @@ matchRoutes.post(
               memoryless: existingActive.memoryless,
               constraints: existingChallenge?.constraints as Record<string, unknown> | null ?? null,
               matchId: existingActive.id,
+              agentHarness: (agent.harness as HarnessInfo | null) ?? null,
             })
           : null;
         const existingWorkspaceUrl = `/api/v1/challenges/${existingChallenge?.slug ?? challenge.slug}/workspace?seed=${existingActive.seed}`;
@@ -210,6 +211,7 @@ matchRoutes.post(
               memoryless,
               constraints: challenge.constraints as Record<string, unknown> | null ?? null,
               matchId: match.id,
+              agentHarness: (agent.harness as HarnessInfo | null) ?? null,
             })
           : null,
         submission_spec: mod.submissionSpec ?? null,

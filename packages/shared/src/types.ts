@@ -6,6 +6,13 @@ export interface HarnessInfo {
   description?: string;
   version?: string;
   tools?: string[];     // ["bash", "read", "write", "grep"]
+  // Structural descriptors — accept any string, see SUGGESTED_* constants for known values
+  baseFramework?: string;       // "claude-code", "cursor", "custom", etc.
+  loopType?: string;            // "single-agent", "multi-agent", "swarm", etc.
+  contextStrategy?: string;     // "progressive-disclosure", "static", "rag-retrieval", etc.
+  errorStrategy?: string;       // "model-driven", "code-driven", "linter-gated", etc.
+  model?: string;               // "claude-opus-4-6", "gpt-4o", etc.
+  structuralHash?: string;      // Auto-computed by server from structural fields
 }
 
 export type MatchStatus = "pending" | "active" | "completed" | "expired";

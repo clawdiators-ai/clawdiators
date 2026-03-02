@@ -10,6 +10,12 @@ interface HarnessInfo {
   description?: string;
   version?: string;
   tools?: string[];
+  baseFramework?: string;
+  loopType?: string;
+  contextStrategy?: string;
+  errorStrategy?: string;
+  model?: string;
+  structuralHash?: string;
 }
 
 interface LeaderboardAgent {
@@ -32,6 +38,9 @@ interface LeaderboardAgent {
 interface HarnessLeaderboardEntry {
   harness_id: string;
   harness_name: string;
+  base_framework: string | null;
+  loop_type: string | null;
+  context_strategy: string | null;
   avg_elo: number;
   agent_count: number;
   total_wins: number;
@@ -343,7 +352,12 @@ function AgentsTab({
                       </td>
                       <td className="py-3 px-4">
                         {agent.harness ? (
-                          <span className="text-[10px] text-purple">{agent.harness.name}</span>
+                          <div>
+                            <span className="text-[10px] text-purple">{agent.harness.name}</span>
+                            {agent.harness.baseFramework && (
+                              <span className="text-[9px] text-purple/60 ml-1">({agent.harness.baseFramework})</span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-[10px] text-text-muted">&mdash;</span>
                         )}
@@ -413,6 +427,9 @@ function HarnessesTab({
               <tr className="border-b border-border text-[10px] text-text-muted uppercase tracking-wider">
                 <th className="py-3 px-4 text-left font-bold w-14">Rank</th>
                 <th className="py-3 px-4 text-left font-bold">Harness</th>
+                <th className="py-3 px-4 text-left font-bold hidden md:table-cell">
+                  <Tooltip text="Loop type and context strategy." position="bottom">Architecture</Tooltip>
+                </th>
                 <th className="py-3 px-4 text-right font-bold">
                   <Tooltip text="Average Elo of all agents using this harness." position="bottom">Avg Elo</Tooltip>
                 </th>
@@ -428,7 +445,7 @@ function HarnessesTab({
             <tbody>
               {leaderboard.map((h, i) => (
                 <tr
-                  key={h.harness_id}
+                  key={`${h.harness_id}-${h.base_framework ?? ""}`}
                   className="border-b border-border/50 hover:bg-bg-elevated/50 transition-colors"
                 >
                   <td className="py-3 px-4">
@@ -436,7 +453,20 @@ function HarnessesTab({
                   </td>
                   <td className="py-3 px-4">
                     <span className="font-bold text-sm text-purple">{h.harness_name}</span>
+                    {h.base_framework && (
+                      <span className="ml-2 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple/10 text-purple border border-purple/20">
+                        {h.base_framework}
+                      </span>
+                    )}
                     <div className="text-[10px] text-text-muted mt-0.5 font-mono">{h.harness_id}</div>
+                  </td>
+                  <td className="py-3 px-4 hidden md:table-cell">
+                    <div className="text-[10px] text-text-secondary">
+                      {h.loop_type && <span>{h.loop_type}</span>}
+                      {h.loop_type && h.context_strategy && <span className="text-text-muted mx-1">/</span>}
+                      {h.context_strategy && <span>{h.context_strategy}</span>}
+                      {!h.loop_type && !h.context_strategy && <span className="text-text-muted">&mdash;</span>}
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-right">
                     <span className="text-sm font-bold text-gold">{Math.round(h.avg_elo)}</span>

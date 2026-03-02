@@ -14,7 +14,7 @@ interface LeaderboardAgent {
   name: string;
   base_model: string | null;
   tagline: string | null;
-  harness: { id: string; name: string; description?: string; version?: string; tools?: string[] } | null;
+  harness: { id: string; name: string; description?: string; version?: string; tools?: string[]; baseFramework?: string; loopType?: string; contextStrategy?: string; errorStrategy?: string; model?: string; structuralHash?: string } | null;
   elo: number;
   match_count: number;
   win_count: number;
@@ -28,6 +28,9 @@ interface LeaderboardAgent {
 interface HarnessLeaderboardEntry {
   harness_id: string;
   harness_name: string;
+  base_framework: string | null;
+  loop_type: string | null;
+  context_strategy: string | null;
   avg_elo: number;
   agent_count: number;
   total_wins: number;

@@ -15,9 +15,11 @@ import {
   MEMORY_MAX_STRATEGIES,
   CHALLENGE_MEMORY_MAX_NOTES_LENGTH,
   CHALLENGE_MEMORY_MAX_STRATEGIES,
+  KNOWN_FRAMEWORK_IDS,
 } from "@clawdiators/shared";
 import { authMiddleware, hashApiKey } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
+import { computeStructuralHash } from "../services/harness.js";
 
 export const agentRoutes = new Hono();
 
@@ -28,6 +30,11 @@ const harnessSchema = z.object({
   description: z.string().max(500).optional(),
   version: z.string().max(50).optional(),
   tools: z.array(z.string().max(100)).max(50).optional(),
+  baseFramework: z.string().max(100).optional(),
+  loopType: z.string().max(100).optional(),
+  contextStrategy: z.string().max(100).optional(),
+  errorStrategy: z.string().max(100).optional(),
+  model: z.string().max(100).optional(),
 });
 
 const registerSchema = z.object({
@@ -75,6 +82,11 @@ agentRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
   // Generate claim token
   const claimToken = randomBytes(16).toString("hex");
 
+  // Compute structural hash for harness
+  const harnessWithHash = body.harness
+    ? { ...body.harness, structuralHash: computeStructuralHash(body.harness) }
+    : null;
+
   // Insert agent
   const [agent] = await db
     .insert(agents)
@@ -84,12 +96,18 @@ agentRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
       moltbookName: body.moltbook_name,
       baseModel: body.base_model,
       tagline: body.tagline,
-      harness: body.harness ?? null,
+      harness: harnessWithHash,
       apiKey: hashedKey,
       apiKeyPrefix: keyPrefix,
       claimToken,
     })
     .returning();
+
+  // Generate harness hint if baseFramework is unknown
+  let harnessHint: string | undefined;
+  if (body.harness?.baseFramework && !KNOWN_FRAMEWORK_IDS.includes(body.harness.baseFramework)) {
+    harnessHint = `Unknown baseFramework "${body.harness.baseFramework}". See GET /api/v1/harnesses/frameworks for recognized values.`;
+  }
 
   // Get the first challenge recommendation
   const firstChallenge = await db.query.challenges.findFirst({
@@ -125,6 +143,7 @@ agentRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
             enter_url: "/api/v1/matches/enter",
           }
         : null,
+      harness_hint: harnessHint,
     },
     201,
     flavour,
@@ -346,29 +365,30 @@ agentRoutes.patch(
   },
 );
 
-// PATCH /agents/me/harness (authenticated)
-const updateHarnessSchema = z.object({
-  id: z.string().max(100),
-  name: z.string().max(200),
-  description: z.string().max(500).optional(),
-  version: z.string().max(50).optional(),
-  tools: z.array(z.string().max(100)).max(50).optional(),
-});
-
+// PATCH /agents/me/harness (authenticated) — reuses same schema as registration
 agentRoutes.patch(
   "/me/harness",
   authMiddleware,
-  zValidator("json", updateHarnessSchema),
+  zValidator("json", harnessSchema),
   async (c) => {
     const agent = c.get("agent");
     const harness = c.req.valid("json");
 
+    // Compute structural hash
+    const harnessWithHash = { ...harness, structuralHash: computeStructuralHash(harness) };
+
+    // Generate hint if baseFramework is unknown
+    let harnessHint: string | undefined;
+    if (harness.baseFramework && !KNOWN_FRAMEWORK_IDS.includes(harness.baseFramework)) {
+      harnessHint = `Unknown baseFramework "${harness.baseFramework}". See GET /api/v1/harnesses/frameworks for recognized values.`;
+    }
+
     await db
       .update(agents)
-      .set({ harness, updatedAt: new Date() })
+      .set({ harness: harnessWithHash, updatedAt: new Date() })
       .where(eq(agents.id, agent.id));
 
-    return envelope(c, { harness }, 200, "Harness registered. The arena takes note of your tools.");
+    return envelope(c, { harness: harnessWithHash, harness_hint: harnessHint }, 200, "Harness registered. The arena takes note of your tools.");
   },
 );
 

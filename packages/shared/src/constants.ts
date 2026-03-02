@@ -1,5 +1,116 @@
 import type { ScoringDimension } from "./types";
 
+// ── Harness Framework & Taxonomy ──────────────────────────────────
+
+export interface KnownFramework {
+  id: string;
+  name: string;
+  category: "ide" | "cli" | "cloud" | "framework" | "other";
+  url: string;
+  defaultTools: string[];
+  description: string;
+}
+
+export const KNOWN_FRAMEWORKS: KnownFramework[] = [
+  // IDEs & editors
+  { id: "cursor", name: "Cursor", category: "ide", url: "https://cursor.com", defaultTools: ["edit", "read", "terminal", "search", "semantic-search"], description: "AI-native code editor with integrated agent." },
+  { id: "windsurf", name: "Windsurf", category: "ide", url: "https://windsurf.com", defaultTools: ["edit", "read", "terminal", "search", "browser"], description: "Agentic IDE with multi-file reasoning and background planning." },
+  { id: "cline", name: "Cline", category: "ide", url: "https://github.com/cline/cline", defaultTools: ["bash", "read", "write", "search", "browser"], description: "Autonomous coding agent in VS Code." },
+  { id: "roo-code", name: "Roo Code", category: "ide", url: "https://roocode.com", defaultTools: ["bash", "read", "write", "search"], description: "VS Code agent focused on reliability for large multi-file changes." },
+  { id: "kilo-code", name: "Kilo Code", category: "ide", url: "https://kilocode.ai", defaultTools: ["bash", "read", "write", "search"], description: "VS Code agent with structured modes and controlled context." },
+  { id: "augment", name: "Augment", category: "ide", url: "https://augmentcode.com", defaultTools: ["edit", "read", "terminal", "search"], description: "AI coding assistant with strong context retention." },
+  { id: "junie", name: "JetBrains Junie", category: "ide", url: "https://jetbrains.com/junie", defaultTools: ["edit", "read", "terminal", "search"], description: "AI agent for IntelliJ-based IDEs." },
+  { id: "copilot-agent", name: "GitHub Copilot Agent", category: "ide", url: "https://github.com/features/copilot", defaultTools: ["edit", "read", "terminal", "search", "git"], description: "GitHub's AI assistant with agent mode." },
+  { id: "continue", name: "Continue", category: "ide", url: "https://continue.dev", defaultTools: ["edit", "read", "terminal", "search"], description: "Open-source AI code assistant for any IDE." },
+
+  // CLI tools
+  { id: "claude-code", name: "Claude Code", category: "cli", url: "https://docs.anthropic.com/en/docs/claude-code", defaultTools: ["bash", "read", "write", "edit", "grep", "glob", "web-search", "web-fetch"], description: "Anthropic's agentic coding CLI." },
+  { id: "aider", name: "Aider", category: "cli", url: "https://aider.chat", defaultTools: ["edit", "read", "terminal", "git"], description: "Terminal AI pair programming with git-native workflows." },
+  { id: "codex-cli", name: "Codex CLI", category: "cli", url: "https://github.com/openai/codex", defaultTools: ["bash", "read", "write"], description: "OpenAI's terminal coding agent." },
+  { id: "gemini-cli", name: "Gemini CLI", category: "cli", url: "https://github.com/google-gemini/gemini-cli", defaultTools: ["bash", "read", "write", "search"], description: "Google's terminal-first coding agent." },
+
+  // Cloud / hosted agents
+  { id: "devin", name: "Devin", category: "cloud", url: "https://devin.ai", defaultTools: ["bash", "read", "write", "browser", "search", "git"], description: "Cognition's autonomous software engineering agent." },
+  { id: "codex-cloud", name: "Codex (Cloud)", category: "cloud", url: "https://openai.com/index/introducing-codex", defaultTools: ["bash", "read", "write", "search", "git"], description: "OpenAI's cloud agent environment." },
+  { id: "replit-agent", name: "Replit Agent", category: "cloud", url: "https://replit.com", defaultTools: ["bash", "read", "write", "browser", "search"], description: "Three-agent architecture (Manager, Editor, Verifier)." },
+  { id: "bolt", name: "Bolt", category: "cloud", url: "https://bolt.new", defaultTools: ["bash", "read", "write", "browser"], description: "StackBlitz's in-browser full-stack agent." },
+  { id: "lovable", name: "Lovable", category: "cloud", url: "https://lovable.dev", defaultTools: ["edit", "read", "browser"], description: "AI web app builder." },
+
+  // Frameworks (for agents built on these)
+  { id: "swe-agent", name: "SWE-agent", category: "framework", url: "https://swe-agent.com", defaultTools: ["bash", "edit", "search", "scroll"], description: "Princeton NLP's software engineering agent framework." },
+  { id: "langgraph", name: "LangGraph", category: "framework", url: "https://langchain-ai.github.io/langgraph/", defaultTools: [], description: "LangChain's graph-based agent orchestration framework." },
+  { id: "crewai", name: "CrewAI", category: "framework", url: "https://crewai.com", defaultTools: [], description: "Multi-agent coordination framework." },
+  { id: "autogen", name: "AutoGen", category: "framework", url: "https://github.com/microsoft/autogen", defaultTools: [], description: "Microsoft's multi-agent conversation framework." },
+  { id: "openai-agents-sdk", name: "OpenAI Agents SDK", category: "framework", url: "https://github.com/openai/openai-agents-python", defaultTools: [], description: "OpenAI's lightweight multi-agent Python framework." },
+  { id: "claude-agent-sdk", name: "Claude Agent SDK", category: "framework", url: "https://docs.anthropic.com/en/docs/agents", defaultTools: [], description: "Anthropic's agent orchestration SDK." },
+
+  // Catch-all
+  { id: "custom", name: "Custom Scaffold", category: "other", url: "", defaultTools: [], description: "A custom-built harness." },
+];
+
+export const KNOWN_FRAMEWORK_IDS = KNOWN_FRAMEWORKS.map((f) => f.id);
+
+/** Suggested loop type values — not enforced, agents can use any string. */
+export const SUGGESTED_LOOP_TYPES = [
+  "single-agent",
+  "multi-agent",
+  "hierarchical",
+  "pipeline",
+  "swarm",
+  "maker-checker",
+  "react",
+] as const;
+
+/** Suggested context strategy values — not enforced, agents can use any string. */
+export const SUGGESTED_CONTEXT_STRATEGIES = [
+  "progressive-disclosure",
+  "static",
+  "rag-retrieval",
+  "sliding-window",
+  "pagerank-map",
+  "filesystem-offload",
+  "hybrid",
+] as const;
+
+/** Suggested error strategy values — not enforced, agents can use any string. */
+export const SUGGESTED_ERROR_STRATEGIES = [
+  "model-driven",
+  "code-driven",
+  "linter-gated",
+  "self-healing",
+  "escalation",
+  "retry-with-backoff",
+  "hybrid",
+] as const;
+
+/** Canonical tool names — suggested vocabulary, not exhaustive. */
+export const CANONICAL_TOOLS = [
+  // File operations
+  "read", "write", "edit", "multi-edit", "create", "delete", "move", "copy",
+  // Terminal
+  "bash", "terminal", "shell",
+  // Search
+  "grep", "glob", "search", "find", "semantic-search", "ripgrep",
+  // Web
+  "web-search", "web-fetch", "browser", "fetch", "curl",
+  // Git & version control
+  "git", "diff", "commit",
+  // Code analysis
+  "lint", "format", "test", "typecheck",
+  // Code navigation
+  "go-to-definition", "find-references",
+  // Orchestration
+  "task", "todo", "agent", "plan",
+  // Vision
+  "screenshot", "image-view",
+  // Scroll / navigation
+  "scroll", "page-up", "page-down",
+  // MCP
+  "mcp-tool",
+] as const;
+
+export type CanonicalTool = (typeof CANONICAL_TOOLS)[number];
+
 // Elo system
 export const ELO_DEFAULT = 1000;
 export const ELO_K_NEW = 32; // K-factor for <30 matches

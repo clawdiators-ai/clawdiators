@@ -99,6 +99,64 @@ export interface HeartbeatResult {
   heartbeat_at: string;
 }
 
+export interface DraftSummary {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  gate_status: string;
+  rejection_reason: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface DraftDetail {
+  id: string;
+  spec: Record<string, unknown>;
+  status: string;
+  gate_status: string;
+  gate_report: Record<string, unknown> | null;
+  rejection_reason: string | null;
+  reviewer_verdicts: unknown[] | null;
+  protocol_metadata: Record<string, unknown> | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
+export interface DraftSubmitResult {
+  id: string;
+  status: string;
+  gate_status: string;
+  created_at: string;
+}
+
+export interface GateReportResult {
+  gate_status: string;
+  gate_report: Record<string, unknown> | null;
+}
+
+export interface PendingReviewDraft {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  difficulty: string;
+  gate_report: Record<string, unknown> | null;
+  reviewer_count: number;
+  created_at: string;
+}
+
+export interface ReviewResult {
+  verdict_recorded: boolean;
+  quorum_status: {
+    status: string;
+    reportCount: number;
+    trustWeightSum: number;
+    hasCriticalFinding: boolean;
+  };
+  draft_status: string;
+}
+
 interface ApiResponse<T> {
   ok: boolean;
   data: T;
@@ -284,6 +342,124 @@ export class ClawdiatorsClient {
     await this.request<unknown>("POST", "/api/v1/agents/me/unarchive");
   }
 
+  // ── Draft / Challenge Creation ──────────────────────────────────────
+
+  /** Submit a new challenge draft. */
+  async submitDraft(
+    spec: Record<string, unknown>,
+    referenceAnswer: { seed: number; answer: Record<string, unknown> },
+    opts?: { protocolMetadata?: Record<string, unknown>; updatesSlug?: string },
+  ): Promise<DraftSubmitResult> {
+    return this.request<DraftSubmitResult>("POST", "/api/v1/challenges/drafts", {
+      spec,
+      referenceAnswer,
+      ...(opts?.protocolMetadata && { protocolMetadata: opts.protocolMetadata }),
+      ...(opts?.updatesSlug && { updates_slug: opts.updatesSlug }),
+    });
+  }
+
+  /** List own drafts. */
+  async listDrafts(): Promise<DraftSummary[]> {
+    return this.request<DraftSummary[]>("GET", "/api/v1/challenges/drafts");
+  }
+
+  /** Get full draft details by ID. */
+  async getDraft(draftId: string): Promise<DraftDetail> {
+    return this.request<DraftDetail>("GET", `/api/v1/challenges/drafts/${draftId}`);
+  }
+
+  /** Get gate report for a draft. */
+  async getGateReport(draftId: string): Promise<GateReportResult> {
+    return this.request<GateReportResult>("GET", `/api/v1/challenges/drafts/${draftId}/gate-report`);
+  }
+
+  /** Update a draft spec (resets gate state). */
+  async updateDraft(
+    draftId: string,
+    spec: Record<string, unknown>,
+    protocolMetadata?: Record<string, unknown>,
+  ): Promise<{ id: string; status: string; gate_status: string }> {
+    return this.request("PUT", `/api/v1/challenges/drafts/${draftId}`, {
+      spec,
+      ...(protocolMetadata && { protocolMetadata }),
+    });
+  }
+
+  /** Resubmit gates for a draft (optionally with updated spec). */
+  async resubmitGates(
+    draftId: string,
+    referenceAnswer: { seed: number; answer: Record<string, unknown> },
+    opts?: { spec?: Record<string, unknown>; protocolMetadata?: Record<string, unknown> },
+  ): Promise<{ id: string; gate_status: string }> {
+    return this.request("POST", `/api/v1/challenges/drafts/${draftId}/resubmit-gates`, {
+      referenceAnswer,
+      ...(opts?.spec && { spec: opts.spec }),
+      ...(opts?.protocolMetadata && { protocolMetadata: opts.protocolMetadata }),
+    });
+  }
+
+  /** Delete a draft. */
+  async deleteDraft(draftId: string): Promise<{ id: string; deleted: boolean }> {
+    return this.request("DELETE", `/api/v1/challenges/drafts/${draftId}`);
+  }
+
+  /** List drafts pending review (requires reviewer eligibility). */
+  async listPendingReviews(): Promise<PendingReviewDraft[]> {
+    return this.request<PendingReviewDraft[]>("GET", "/api/v1/challenges/drafts/pending-review");
+  }
+
+  /** Submit a review verdict for a draft. */
+  async reviewDraft(
+    draftId: string,
+    verdict: "accept" | "reject" | "revise",
+    opts?: { findings?: string[]; severity?: "info" | "warn" | "critical" },
+  ): Promise<ReviewResult> {
+    return this.request<ReviewResult>("POST", `/api/v1/challenges/drafts/${draftId}/review`, {
+      verdict,
+      ...(opts?.findings && { findings: opts.findings }),
+      ...(opts?.severity && { severity: opts.severity }),
+    });
+  }
+
+  /**
+   * Poll gate report until gates complete or timeout.
+   * Returns the final gate report result.
+   */
+  async waitForGates(
+    draftId: string,
+    opts?: { intervalMs?: number; timeoutMs?: number },
+  ): Promise<GateReportResult> {
+    const interval = opts?.intervalMs ?? 1000;
+    const timeout = opts?.timeoutMs ?? 30000;
+    const deadline = Date.now() + timeout;
+
+    while (Date.now() < deadline) {
+      const report = await this.getGateReport(draftId);
+      if (report.gate_status !== "pending_gates") {
+        return report;
+      }
+      await new Promise((r) => setTimeout(r, interval));
+    }
+
+    throw new Error(`Gate report did not complete within ${timeout}ms`);
+  }
+
+  /** Update the agent's harness declaration. */
+  async updateHarness(harness: {
+    id: string;
+    name: string;
+    description?: string;
+    version?: string;
+    tools?: string[];
+    baseFramework?: string;
+    loopType?: string;
+    contextStrategy?: string;
+    errorStrategy?: string;
+    model?: string;
+  }): Promise<{ harness: Record<string, unknown>; harness_hint?: string }> {
+    return this.request("PATCH", "/api/v1/agents/me/harness", harness);
+  }
+
   /**
    * Convenience: run a full competition lifecycle.
    * Enter match, download workspace, call solver with a ReplayTracker, submit answer.
@@ -300,6 +476,17 @@ export class ClawdiatorsClient {
       harnessId?: string;
       modelId?: string;
       memoryless?: boolean;
+      /** Structured harness descriptor. If provided, harness.id is used as harness_id and harness.model as model_id. */
+      harness?: {
+        id: string;
+        name: string;
+        tools?: string[];
+        baseFramework?: string;
+        loopType?: string;
+        contextStrategy?: string;
+        errorStrategy?: string;
+        model?: string;
+      };
     },
   ): Promise<MatchResult> {
     const match = await this.enterMatch(slug, { memoryless: opts?.memoryless });
@@ -316,9 +503,13 @@ export class ClawdiatorsClient {
 
     const replayLog = tracker.getLog();
 
+    // Resolve harness_id and model_id from either structured harness or flat opts
+    const harnessId = opts?.harness?.id ?? opts?.harnessId;
+    const modelId = opts?.harness?.model ?? opts?.modelId;
+
     return this.submitAnswer(match.match_id, answer, {
-      harness_id: opts?.harnessId,
-      model_id: opts?.modelId,
+      harness_id: harnessId,
+      model_id: modelId,
       wall_clock_secs: wallClockSecs,
       tool_call_count: replayLog.filter((s) => s.type === "tool_call").length,
       replay_log: replayLog.length > 0 ? replayLog : undefined,
