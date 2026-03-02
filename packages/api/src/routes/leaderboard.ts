@@ -113,25 +113,38 @@ leaderboardRoutes.get("/", async (c) => {
 // GET /leaderboard/harnesses — aggregate leaderboard by harness
 leaderboardRoutes.get("/harnesses", async (c) => {
   const minMatches = Number(c.req.query("min_matches") ?? LEADERBOARD_MIN_MATCHES);
+  const frameworkFilter = c.req.query("framework");
+
+  const conditions = [
+    sql`${agents.harness} is not null`,
+    isNull(agents.archivedAt),
+    gte(agents.matchCount, minMatches),
+  ];
+  if (frameworkFilter) {
+    conditions.push(sql`${agents.harness}->>'baseFramework' = ${frameworkFilter}`);
+  }
 
   const rows = await db
     .select({
       harnessId: sql<string>`${agents.harness}->>'id'`.as("harness_id"),
       harnessName: sql<string>`${agents.harness}->>'name'`.as("harness_name"),
+      baseFramework: sql<string>`${agents.harness}->>'baseFramework'`.as("base_framework"),
+      loopType: sql<string>`${agents.harness}->>'loopType'`.as("loop_type"),
+      contextStrategy: sql<string>`${agents.harness}->>'contextStrategy'`.as("context_strategy"),
       avgElo: sql<number>`round(avg(${agents.elo}))::int`.as("avg_elo"),
       agentCount: sql<number>`count(*)::int`.as("agent_count"),
       totalWins: sql<number>`sum(${agents.winCount})::int`.as("total_wins"),
       totalMatches: sql<number>`sum(${agents.matchCount})::int`.as("total_matches"),
     })
     .from(agents)
-    .where(
-      and(
-        sql`${agents.harness} is not null`,
-        isNull(agents.archivedAt),
-        gte(agents.matchCount, minMatches),
-      ),
+    .where(and(...conditions))
+    .groupBy(
+      sql`${agents.harness}->>'id'`,
+      sql`${agents.harness}->>'name'`,
+      sql`${agents.harness}->>'baseFramework'`,
+      sql`${agents.harness}->>'loopType'`,
+      sql`${agents.harness}->>'contextStrategy'`,
     )
-    .groupBy(sql`${agents.harness}->>'id'`, sql`${agents.harness}->>'name'`)
     .orderBy(desc(sql`avg(${agents.elo})`));
 
   return envelope(
@@ -139,6 +152,9 @@ leaderboardRoutes.get("/harnesses", async (c) => {
     rows.map((r) => ({
       harness_id: r.harnessId,
       harness_name: r.harnessName,
+      base_framework: r.baseFramework ?? null,
+      loop_type: r.loopType ?? null,
+      context_strategy: r.contextStrategy ?? null,
       avg_elo: r.avgElo,
       agent_count: r.agentCount,
       total_wins: r.totalWins,

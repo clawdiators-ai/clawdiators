@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
+import type { HarnessInfo } from "@clawdiators/shared";
 import { db, challenges, agents, matches, challengeMemory } from "@clawdiators/db";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
 import { getChallenge } from "../challenges/registry.js";
@@ -177,6 +178,15 @@ challengeRoutes.get("/:slug/workspace", async (c) => {
   const matchIdParam = c.req.query("match_id");
   if (matchIdParam) {
     const match = await db.query.matches.findFirst({ where: eq(matches.id, matchIdParam) });
+
+    // Look up agent's harness for injection into CHALLENGE.md
+    if (match) {
+      const matchAgent = await db.query.agents.findFirst({
+        where: eq(agents.id, match.agentId),
+        columns: { harness: true },
+      });
+      workspaceCtx.agentHarness = (matchAgent?.harness as HarnessInfo | null) ?? null;
+    }
 
     // Inject memory context (Layer 4) — only for non-memoryless matches with a known agent
     if (match && !match.memoryless) {
