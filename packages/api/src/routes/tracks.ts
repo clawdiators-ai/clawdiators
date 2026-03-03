@@ -3,30 +3,34 @@ import { eq, desc, and } from "drizzle-orm";
 import { db, challengeTracks, trackProgress, agents } from "@clawdiators/db";
 import { authMiddleware } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
+import { getCache, setCache } from "../lib/route-cache.js";
 
 export const trackRoutes = new Hono();
 
+const TRACKS_LIST_TTL = 60_000; // 60 s
+
 // GET /tracks — list active tracks
 trackRoutes.get("/", async (c) => {
+  const cached = getCache<object[]>("tracks:active");
+  if (cached) return envelope(c, cached, 200, `${cached.length} tracks await your journey.`);
+
   const all = await db.query.challengeTracks.findMany({
     where: eq(challengeTracks.active, true),
   });
 
-  return envelope(
-    c,
-    all.map((t) => ({
-      slug: t.slug,
-      name: t.name,
-      description: t.description,
-      lore: t.lore,
-      challenge_slugs: t.challengeSlugs,
-      challenge_count: t.challengeSlugs.length,
-      scoring_method: t.scoringMethod,
-      max_score: t.maxScore,
-    })),
-    200,
-    `${all.length} tracks await your journey.`,
-  );
+  const result = all.map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    description: t.description,
+    lore: t.lore,
+    challenge_slugs: t.challengeSlugs,
+    challenge_count: t.challengeSlugs.length,
+    scoring_method: t.scoringMethod,
+    max_score: t.maxScore,
+  }));
+
+  setCache("tracks:active", result, TRACKS_LIST_TTL);
+  return envelope(c, result, 200, `${all.length} tracks await your journey.`);
 });
 
 // GET /tracks/:slug — track detail

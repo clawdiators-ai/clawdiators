@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import { eq, and, isNull, sql, desc } from "drizzle-orm";
+import { eq, and, isNull, inArray, sql, desc } from "drizzle-orm";
 import type { HarnessInfo } from "@clawdiators/shared";
 import { db, challenges, agents, matches, challengeMemory } from "@clawdiators/db";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
+import { getCache, setCache } from "../lib/route-cache.js";
 import { getChallenge } from "../challenges/registry.js";
 import { buildWorkspaceArchive, type ChallengeMdContext } from "../challenges/workspace.js";
 import { getChallengeAnalytics } from "../services/analytics.js";
@@ -24,7 +25,7 @@ challengeRoutes.get("/images", (c) => {
   return envelope(c, { images: getAllowedImages() });
 });
 
-// Helper to resolve author agent name
+// Helper to resolve author agent name for single-challenge endpoints
 async function resolveAuthorName(authorAgentId: string | null): Promise<string | null> {
   if (!authorAgentId) return null;
   const agent = await db.query.agents.findFirst({
@@ -33,10 +34,16 @@ async function resolveAuthorName(authorAgentId: string | null): Promise<string |
   return agent?.name ?? null;
 }
 
+const CHALLENGES_LIST_TTL = 60_000; // 60 s
+
 // GET /challenges — returns active challenges (pass ?all=true for inactive too, ?include_archived=true for archived)
 challengeRoutes.get("/", async (c) => {
   const showAll = c.req.query("all") === "true";
   const includeArchived = c.req.query("include_archived") === "true";
+
+  const cacheKey = `challenges:${showAll}:${includeArchived}`;
+  const cached = getCache<object[]>(cacheKey);
+  if (cached) return envelope(c, cached);
 
   const conditions = [];
   if (!showAll) conditions.push(eq(challenges.active, true));
@@ -46,33 +53,36 @@ challengeRoutes.get("/", async (c) => {
     where: conditions.length > 0 ? and(...conditions) : undefined,
   });
 
-  // Batch-resolve author names
+  // Single query for all author names instead of N individual queries
   const authorIds = [...new Set(allChallenges.map((ch) => ch.authorAgentId).filter(Boolean))] as string[];
   const authorMap: Record<string, string> = {};
-  for (const id of authorIds) {
-    const name = await resolveAuthorName(id);
-    if (name) authorMap[id] = name;
+  if (authorIds.length > 0) {
+    const authorRows = await db.query.agents.findMany({
+      where: inArray(agents.id, authorIds),
+      columns: { id: true, name: true },
+    });
+    for (const row of authorRows) authorMap[row.id] = row.name;
   }
 
-  return envelope(
-    c,
-    allChallenges.map((ch) => ({
-      slug: ch.slug,
-      name: ch.name,
-      description: ch.description,
-      lore: ch.lore,
-      category: ch.category,
-      difficulty: ch.difficulty,
-      calibrated_difficulty: ch.calibratedDifficulty ?? null,
-      match_type: ch.matchType,
-      time_limit_secs: ch.timeLimitSecs,
-      max_score: ch.maxScore,
-      active: ch.active,
-      scoring_dimensions: ch.scoringDimensions,
-      author_agent_id: ch.authorAgentId,
-      author_name: ch.authorAgentId ? (authorMap[ch.authorAgentId] ?? null) : null,
-    })),
-  );
+  const result = allChallenges.map((ch) => ({
+    slug: ch.slug,
+    name: ch.name,
+    description: ch.description,
+    lore: ch.lore,
+    category: ch.category,
+    difficulty: ch.difficulty,
+    calibrated_difficulty: ch.calibratedDifficulty ?? null,
+    match_type: ch.matchType,
+    time_limit_secs: ch.timeLimitSecs,
+    max_score: ch.maxScore,
+    active: ch.active,
+    scoring_dimensions: ch.scoringDimensions,
+    author_agent_id: ch.authorAgentId,
+    author_name: ch.authorAgentId ? (authorMap[ch.authorAgentId] ?? null) : null,
+  }));
+
+  setCache(cacheKey, result, CHALLENGES_LIST_TTL);
+  return envelope(c, result);
 });
 
 // GET /challenges/:slug
