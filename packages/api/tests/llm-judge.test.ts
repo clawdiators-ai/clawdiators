@@ -98,7 +98,7 @@ describe("llmJudge", () => {
     expect(result.error).toContain("failed");
   });
 
-  it("respects rate limit of MAX_JUDGE_CALLS", async () => {
+  it("respects per-invocation rate limit of MAX_JUDGE_CALLS", async () => {
     let callCount = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
       callCount++;
@@ -110,16 +110,37 @@ describe("llmJudge", () => {
       );
     });
 
-    // Make multiple judge calls to exhaust rate limit
+    // Single invocation with runs > MAX_JUDGE_CALLS should be capped
+    await llmJudge("prompt", "response", "rubric", {
+      apiKey: "test-key",
+      runs: 20, // Exceeds MAX_JUDGE_CALLS (10)
+    });
+
+    expect(callCount).toBeLessThanOrEqual(10);
+  });
+
+  it("separate invocations have independent rate limits", async () => {
+    let callCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      callCount++;
+      return new Response(
+        JSON.stringify({
+          content: [{ type: "text", text: JSON.stringify({ score: 50 }) }],
+        }),
+        { status: 200 },
+      );
+    });
+
+    // 5 invocations × 3 runs each = 15 API calls — should NOT be limited
     for (let i = 0; i < 5; i++) {
-      await llmJudge("prompt", "response", "rubric", {
+      const result = await llmJudge("prompt", "response", "rubric", {
         apiKey: "test-key",
         runs: 3,
       });
+      expect(result.error).toBeUndefined();
     }
 
-    // After 10+ calls, should hit the rate limit
-    expect(callCount).toBeLessThanOrEqual(12); // 10 limit + potential retries before limit
+    expect(callCount).toBe(15);
   });
 });
 

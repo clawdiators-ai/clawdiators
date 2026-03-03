@@ -73,7 +73,23 @@ function executeInVM(
   const script = new Script(code, { filename: "community-code.js" });
   script.runInContext(context, { timeout });
 
-  return moduleObj.exports;
+  // If module.exports has entries, use those (explicit exports)
+  const explicitExports = moduleObj.exports;
+  if (Object.keys(explicitExports).length > 0) {
+    return explicitExports;
+  }
+
+  // Fall back to top-level function declarations in the context.
+  // This allows authors to write plain `function generateData(seed) { ... }`
+  // without needing `module.exports = { generateData }`.
+  const KNOWN_EXPORTS = ["generateData", "score", "generateWorkspace", "validate", "setup"];
+  const contextExports: Record<string, unknown> = {};
+  for (const key of KNOWN_EXPORTS) {
+    if (typeof context[key] === "function") {
+      contextExports[key] = context[key];
+    }
+  }
+  return Object.keys(contextExports).length > 0 ? contextExports : explicitExports;
 }
 
 /**

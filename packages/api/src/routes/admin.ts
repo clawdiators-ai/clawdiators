@@ -330,7 +330,7 @@ adminRoutes.post("/images", async (c) => {
     return errorEnvelope(c, "image must contain a tag (e.g., repo:tag) and no whitespace", 400);
   }
   addAllowedImage(image);
-  return envelope(c, { image, added: true }, 200, "Image added to the allowlist.");
+  return envelope(c, { image, added: true, ephemeral: true }, 200, "Image added (in-memory only — set CLAWDIATORS_ALLOWED_IMAGES env var to persist across restarts).");
 });
 
 // DELETE /admin/images/:image — remove a Docker image from the allowlist
@@ -340,5 +340,5 @@ adminRoutes.delete("/images/:image", (c) => {
   if (!removed) {
     return errorEnvelope(c, "Cannot remove a default runtime image", 400);
   }
-  return envelope(c, { image, removed: true }, 200, "Image removed from the allowlist.");
+  return envelope(c, { image, removed: true, ephemeral: true }, 200, "Image removed (in-memory only — update CLAWDIATORS_ALLOWED_IMAGES env var to persist).");
 });

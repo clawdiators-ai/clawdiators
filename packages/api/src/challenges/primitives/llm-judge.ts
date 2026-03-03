@@ -27,12 +27,12 @@ export interface LLMJudgeResult {
 /**
  * Call an LLM to judge a response against a prompt/rubric.
  * Runs `runs` times and returns the median score.
- * Rate-limited to MAX_JUDGE_CALLS per evaluation.
+ * Rate-limited to MAX_JUDGE_CALLS per invocation (including retries).
  */
-let callCount = 0;
 
+/** @deprecated No longer needed — call count is per-invocation. Kept for test compat. */
 export function resetJudgeCallCount(): void {
-  callCount = 0;
+  // no-op: callCount is now local to each llmJudge() invocation
 }
 
 export async function llmJudge(
@@ -50,6 +50,7 @@ export async function llmJudge(
     return { score: 0, scores: [], error: "ANTHROPIC_API_KEY not set" };
   }
 
+  let callCount = 0; // Per-invocation rate limit (includes retries)
   const scores: number[] = [];
   let lastReasoning: string | undefined;
 

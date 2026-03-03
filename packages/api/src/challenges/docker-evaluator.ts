@@ -87,6 +87,8 @@ export function getTierFlags(tier: EnvironmentTier): string[] {
   }
 }
 
+const KNOWN_CAPABILITIES = new Set(["gpu", "large-memory", "shm", "network"]);
+
 /**
  * Build Docker flags for custom tier based on declared capabilities.
  * Maps capability strings to concrete Docker CLI flags.
@@ -94,6 +96,11 @@ export function getTierFlags(tier: EnvironmentTier): string[] {
 export function buildCustomFlags(capabilities?: string[]): string[] {
   if (!capabilities || capabilities.length === 0) {
     return ["--memory=4g", "--cpus=4", "--pids-limit=200", "--read-only"];
+  }
+  for (const cap of capabilities) {
+    if (!KNOWN_CAPABILITIES.has(cap)) {
+      console.warn(`buildCustomFlags: unknown capability "${cap}" (known: ${[...KNOWN_CAPABILITIES].join(", ")})`);
+    }
   }
   const flags: string[] = ["--read-only"];
   if (capabilities.includes("gpu")) flags.push(...getGpuFlags());
@@ -312,12 +319,17 @@ export async function evaluateInSubprocess(
     console.warn(`evaluateInSubprocess: tier "${tier}" requested but subprocess mode does not enforce Docker-level isolation`);
   }
 
-  // Pass env vars to subprocess
-  const env = { ...process.env };
-  if (opts?.envVars) {
-    for (const [key, value] of Object.entries(opts.envVars)) {
-      env[key] = value;
-    }
+  // Whitelist only essential env vars — prevent leaking secrets (ADMIN_API_KEY,
+  // DATABASE_URL, agent keys, etc.) to evaluator scripts.
+  const env: Record<string, string> = {
+    PATH: process.env.PATH ?? "",
+    HOME: process.env.HOME ?? "",
+    NODE_PATH: process.env.NODE_PATH ?? "",
+    ...(opts?.envVars ?? {}),
+  };
+  // Tier 2+ evaluators with LLM judge need ANTHROPIC_API_KEY for API calls
+  if (tier !== "sandboxed" && process.env.ANTHROPIC_API_KEY) {
+    env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
   }
 
   try {

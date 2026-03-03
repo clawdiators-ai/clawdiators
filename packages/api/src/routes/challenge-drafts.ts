@@ -275,7 +275,7 @@ challengeDraftRoutes.post("/:id/resubmit-gates", async (c) => {
     return errorEnvelope(c, "Draft not found", 404, "No such blueprint exists.");
   }
 
-  if (draft.gateStatus !== "pending_gates") {
+  if (draft.gateStatus !== "pending_gates" && draft.gateStatus !== "failed") {
     return errorEnvelope(
       c,
       `Gates already completed with status "${draft.gateStatus}" — cannot resubmit`,
@@ -285,6 +285,7 @@ challengeDraftRoutes.post("/:id/resubmit-gates", async (c) => {
   }
 
   const body = await c.req.json() as {
+    spec?: Record<string, unknown>;
     referenceAnswer: { seed: number; answer: Record<string, unknown> };
   };
 
@@ -292,10 +293,24 @@ challengeDraftRoutes.post("/:id/resubmit-gates", async (c) => {
     return errorEnvelope(c, "referenceAnswer with seed and answer is required", 400);
   }
 
+  // Allow updated spec on resubmit (so authors can fix code files)
+  const specToUse = body.spec ?? draft.spec;
+
+  // Reset gate status to pending_gates before re-running
+  await db
+    .update(challengeDrafts)
+    .set({
+      gateStatus: "pending_gates",
+      gateReport: null,
+      status: "submitted",
+      ...(body.spec ? { spec: body.spec } : {}),
+    })
+    .where(eq(challengeDrafts.id, draft.id));
+
   // Re-trigger background gate run
   runGatesInBackground(
     draft.id,
-    draft.spec,
+    specToUse,
     body.referenceAnswer,
     draft.protocolMetadata ?? undefined,
   ).catch((err) => console.error(`Unhandled gate runner error for draft ${draft.id}:`, err));

@@ -35,15 +35,23 @@ export function checkSpecValidity(raw: unknown): GateResult {
  * Verify that generateData produces identical output for the same seed.
  */
 export function checkDeterminism(mod: ChallengeModule): GateResult {
-  const result = verifyDeterminism((seed) => mod.generateData(seed, {}));
-  if (result.deterministic) {
-    return { passed: true, details: { seeds_tested: [42, 123, 7777] } };
+  try {
+    const result = verifyDeterminism((seed) => mod.generateData(seed, {}));
+    if (result.deterministic) {
+      return { passed: true, details: { seeds_tested: [42, 123, 7777] } };
+    }
+    return {
+      passed: false,
+      details: { seeds_tested: [42, 123, 7777] },
+      error: result.error,
+    };
+  } catch (err) {
+    return {
+      passed: false,
+      details: { seeds_tested: [42, 123, 7777] },
+      error: `generateData threw: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
-  return {
-    passed: false,
-    details: { seeds_tested: [42, 123, 7777] },
-    error: result.error,
-  };
 }
 
 // ── Gate 3: Contract Consistency ─────────────────────────────────────
@@ -542,7 +550,29 @@ export async function runAllGates(
   // ── Standard gates (all specs) ─────────────────────────────────────
 
   // Build module (code or declarative)
-  const mod = buildModuleForSpec(spec);
+  let mod: ChallengeModule;
+  try {
+    mod = buildModuleForSpec(spec);
+  } catch (err) {
+    const msg = `Failed to build challenge module: ${err instanceof Error ? err.message : String(err)}`;
+    const buildSkipped: GateResult = { passed: false, details: {}, error: `Skipped — ${msg}` };
+    return {
+      gates: {
+        spec_validity: specValidityResult,
+        ...(codeSyntaxResult && { code_syntax: codeSyntaxResult }),
+        ...(codeSecurityResult && { code_security: codeSecurityResult }),
+        ...(contentSafetyResult && { content_safety: contentSafetyResult }),
+        determinism: { passed: false, details: {}, error: msg },
+        contract_consistency: buildSkipped,
+        baseline_solveability: buildSkipped,
+        anti_gaming: buildSkipped,
+        score_distribution: buildSkipped,
+        design_guide_hash: buildSkipped,
+      },
+      overall: "fail",
+      generated_at,
+    };
+  }
 
   // Gate — determinism
   const determinismResult = checkDeterminism(mod);

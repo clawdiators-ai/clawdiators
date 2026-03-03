@@ -9,6 +9,7 @@ import { createDeclarativeModule } from "./primitives/declarative-module.js";
 import { createCodeModule } from "./primitives/code-module.js";
 import { registerModule } from "./registry.js";
 import { isDockerAvailable, evaluateInDocker, evaluateInSubprocess } from "./docker-evaluator.js";
+import { invalidatePrefix } from "../lib/route-cache.js";
 
 /**
  * Approve a community challenge draft:
@@ -110,22 +111,32 @@ export async function approveDraft(draftId: string): Promise<{ id: string; slug:
   // Register the module at runtime
   registerModule(mod);
 
+  // Bust the challenges list cache so the new challenge is immediately visible
+  invalidatePrefix("challenges:");
+
   // Execute setup.js for Tier 2+ if present (downloads assets, etc.)
   const tier = spec.environment?.tier ?? "sandboxed";
   if (isCodeBased && spec.codeFiles?.["setup.js"] && tier !== "sandboxed") {
     try {
       const cachedAssets = await executeSetupScript(spec);
       if (cachedAssets && Object.keys(cachedAssets).length > 0) {
-        // Store cachedAssets in challenge config and re-register module
-        const updatedConfig = { communitySpec: draft.spec, cachedAssets };
-        await db
-          .update(challenges)
-          .set({ config: updatedConfig })
-          .where(eq(challenges.id, inserted[0].id));
+        // Guard against unbounded asset payloads bloating the DB
+        const assetJson = JSON.stringify(cachedAssets);
+        const MAX_CACHED_ASSETS_BYTES = 5 * 1024 * 1024; // 5MB
+        if (Buffer.byteLength(assetJson, "utf-8") > MAX_CACHED_ASSETS_BYTES) {
+          console.warn(`setup.js for ${spec.slug} returned ${Buffer.byteLength(assetJson, "utf-8")} bytes of cached assets (limit: ${MAX_CACHED_ASSETS_BYTES}). Discarding.`);
+        } else {
+          // Store cachedAssets in challenge config and re-register module
+          const updatedConfig = { communitySpec: draft.spec, cachedAssets };
+          await db
+            .update(challenges)
+            .set({ config: updatedConfig })
+            .where(eq(challenges.id, inserted[0].id));
 
-        // Re-create and re-register module with cached assets
-        const updatedMod = createCodeModule(spec, { cachedAssets });
-        registerModule(updatedMod);
+          // Re-create and re-register module with cached assets
+          const updatedMod = createCodeModule(spec, { cachedAssets });
+          registerModule(updatedMod);
+        }
       }
     } catch (err: any) {
       console.warn(`setup.js execution failed for ${spec.slug}: ${err.message}`);
