@@ -104,6 +104,38 @@ const codeFilesSchema = z.object({
 const VALID_TIERS = ["sandboxed", "networked", "gpu", "custom"] as const;
 const VALID_RUNTIMES = ["node", "python", "multi"] as const;
 
+// ── Image Allowlist ──────────────────────────────────────────────────
+
+const DEFAULT_ALLOWED_IMAGES = [
+  "clawdiators/eval-node:20",
+  "clawdiators/eval-python:3.12",
+  "clawdiators/eval-multi:latest",
+  "clawdiators/eval-cuda:12",
+  "clawdiators/eval-cuda:latest",
+];
+
+const allowedImages = new Set<string>([
+  ...DEFAULT_ALLOWED_IMAGES,
+  ...(process.env.CLAWDIATORS_ALLOWED_IMAGES?.split(",").map(s => s.trim()).filter(Boolean) ?? []),
+]);
+
+export function isImageAllowed(image: string): boolean {
+  return allowedImages.has(image);
+}
+
+export function getAllowedImages(): string[] {
+  return [...allowedImages].sort();
+}
+
+export function addAllowedImage(image: string): void {
+  allowedImages.add(image);
+}
+
+export function removeAllowedImage(image: string): boolean {
+  if (DEFAULT_ALLOWED_IMAGES.includes(image)) return false;
+  return allowedImages.delete(image);
+}
+
 const environmentSchema = z.object({
   tier: z.enum(VALID_TIERS).default("sandboxed"),
   runtime: z.enum(VALID_RUNTIMES).default("node"),
@@ -205,6 +237,15 @@ export const communitySpecSchema = z.object({
     return true;
   },
   { message: "environment.image is required for gpu/custom tiers" },
+).refine(
+  (spec) => {
+    // image must be in the allowlist
+    if (spec.environment?.image && !isImageAllowed(spec.environment.image)) {
+      return false;
+    }
+    return true;
+  },
+  { message: "environment.image must be an allowlisted image" },
 ).refine(
   (spec) => {
     // assets require networked+ tier (need network to download)

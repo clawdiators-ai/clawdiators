@@ -803,7 +803,7 @@ describe("communitySpecSchema codeFiles validation", () => {
   it("accepts gpu tier with image", () => {
     const result = validateSpec({
       ...codeBasedSpec,
-      environment: { tier: "gpu", image: "eval-cuda:latest" },
+      environment: { tier: "gpu", image: "clawdiators/eval-cuda:latest" },
     });
     expect(result.valid).toBe(true);
   });
@@ -952,7 +952,7 @@ describe("createCodeModule Tier 2+ evaluator wrapper", () => {
   it("gpu tier also generates evaluator wrapper", () => {
     const gpuSpec: CommunitySpec = {
       ...codeBasedSpec,
-      environment: { tier: "gpu", image: "eval-cuda:latest" },
+      environment: { tier: "gpu", image: "clawdiators/eval-cuda:latest" },
     };
     const mod = createCodeModule(gpuSpec);
     expect(mod.scoringSpec?.evaluator).toBeDefined();

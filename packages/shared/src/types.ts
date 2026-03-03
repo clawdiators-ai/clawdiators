@@ -260,6 +260,8 @@ export interface EvaluationLog {
   tier?: EnvironmentTier;
   startedAt: string;
   completedAt: string;
+  durationMs?: number;
+  estimatedCostUsd?: number;
   containerExitCode?: number;
   stdout?: string;
   rawScores: Record<string, number>;

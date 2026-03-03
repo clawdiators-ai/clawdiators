@@ -9,6 +9,7 @@ import { createContext, runInContext, Script } from "node:vm";
 import type { ChallengeModule, ChallengeData, ScoringInput, ScoreResult, SubmissionWarning } from "../types.js";
 import type { CommunitySpec, CodeFiles } from "./validator.js";
 import { generateLLMJudgeInlineScript } from "./llm-judge.js";
+import { generateBenchmarkInlineScript } from "./benchmark.js";
 
 /** Mulberry32 PRNG source — inlined into every code execution context. */
 const MULBERRY32_SOURCE = `
@@ -116,6 +117,13 @@ function buildTier2EvaluatorWrapper(spec: CommunitySpec): string {
   if (helpersCode) {
     parts.push(`// --- helpers.js ---`);
     parts.push(helpersCode);
+    parts.push(``);
+  }
+
+  // Inline benchmark utilities for gpu/custom tiers
+  const tier = spec.environment?.tier ?? "sandboxed";
+  if (tier === "gpu" || tier === "custom") {
+    parts.push(generateBenchmarkInlineScript());
     parts.push(``);
   }
 

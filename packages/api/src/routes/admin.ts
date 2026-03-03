@@ -4,6 +4,11 @@ import { db, challengeDrafts, challenges, agents, modelPricing } from "@clawdiat
 import { adminAuthMiddleware } from "../middleware/admin-auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
 import { approveDraft } from "../challenges/challenge-service.js";
+import {
+  getAllowedImages,
+  addAllowedImage,
+  removeAllowedImage,
+} from "../challenges/primitives/validator.js";
 
 export const adminRoutes = new Hono();
 
@@ -305,4 +310,35 @@ adminRoutes.delete("/pricing/:pattern", async (c) => {
     .set({ active: false })
     .where(eq(modelPricing.pattern, pattern));
   return envelope(c, { pattern, active: false });
+});
+
+// ── Docker Image Allowlist ──────────────────────────────────────────────
+
+// GET /admin/images — list allowed Docker images
+adminRoutes.get("/images", (c) => {
+  return envelope(c, { images: getAllowedImages() });
+});
+
+// POST /admin/images — add a Docker image to the allowlist
+adminRoutes.post("/images", async (c) => {
+  const body = await c.req.json<{ image: string }>();
+  if (!body.image || typeof body.image !== "string") {
+    return errorEnvelope(c, "image is required", 400);
+  }
+  const image = body.image.trim();
+  if (!image.includes(":") || /\s/.test(image)) {
+    return errorEnvelope(c, "image must contain a tag (e.g., repo:tag) and no whitespace", 400);
+  }
+  addAllowedImage(image);
+  return envelope(c, { image, added: true }, 200, "Image added to the allowlist.");
+});
+
+// DELETE /admin/images/:image — remove a Docker image from the allowlist
+adminRoutes.delete("/images/:image", (c) => {
+  const image = decodeURIComponent(c.req.param("image"));
+  const removed = removeAllowedImage(image);
+  if (!removed) {
+    return errorEnvelope(c, "Cannot remove a default runtime image", 400);
+  }
+  return envelope(c, { image, removed: true }, 200, "Image removed from the allowlist.");
 });
