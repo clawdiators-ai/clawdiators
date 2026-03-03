@@ -22,7 +22,10 @@ const RUNTIME_COMMANDS: Record<EvalRuntime, (script: string) => string[]> = {
     script.endsWith(".py") ? ["python3", script] : ["node", script],
 };
 
-/** Tier-specific Docker CLI flags. */
+/**
+ * Static tier flags — backward-compatible constant for existing tests.
+ * For runtime use, prefer `getTierFlags()` which resolves configurable GPU flags.
+ */
 export const TIER_FLAGS: Record<EnvironmentTier, string[]> = {
   sandboxed: [
     "--network=none",
@@ -50,11 +53,63 @@ export const TIER_FLAGS: Record<EnvironmentTier, string[]> = {
   custom: [],
 };
 
+const GPU_FLAGS_DEFAULT = "all";
+
+function getGpuFlags(): string[] {
+  const gpuSpec = process.env.CLAWDIATORS_GPU_FLAGS ?? GPU_FLAGS_DEFAULT;
+  return ["--gpus", gpuSpec];
+}
+
+/**
+ * Get tier-specific Docker CLI flags at runtime.
+ * For GPU tier, resolves configurable GPU flags from CLAWDIATORS_GPU_FLAGS env var.
+ */
+export function getTierFlags(tier: EnvironmentTier): string[] {
+  switch (tier) {
+    case "sandboxed":
+      return [
+        "--network=none", "--memory=512m", "--cpus=1", "--pids-limit=50",
+        "--read-only", "--tmpfs", "/tmp:exec,size=64m",
+      ];
+    case "networked":
+      return [
+        "--memory=1g", "--cpus=2", "--pids-limit=100",
+        "--read-only", "--tmpfs", "/tmp:exec,size=128m",
+      ];
+    case "gpu":
+      return [
+        "--memory=4g", "--cpus=4", "--pids-limit=200",
+        "--read-only", "--tmpfs", "/tmp:exec,size=256m",
+        ...getGpuFlags(),
+      ];
+    case "custom":
+      return [];
+  }
+}
+
+/**
+ * Build Docker flags for custom tier based on declared capabilities.
+ * Maps capability strings to concrete Docker CLI flags.
+ */
+export function buildCustomFlags(capabilities?: string[]): string[] {
+  if (!capabilities || capabilities.length === 0) {
+    return ["--memory=4g", "--cpus=4", "--pids-limit=200", "--read-only"];
+  }
+  const flags: string[] = ["--read-only"];
+  if (capabilities.includes("gpu")) flags.push(...getGpuFlags());
+  if (capabilities.includes("large-memory")) flags.push("--memory=8g");
+  else flags.push("--memory=4g");
+  if (capabilities.includes("shm")) flags.push("--shm-size=1g");
+  flags.push("--cpus=4", "--pids-limit=200");
+  return flags;
+}
+
 /** Options for tier-aware evaluation. */
 export interface TierEvalOpts {
   tier?: EnvironmentTier;
   envVars?: Record<string, string>;
   image?: string;
+  capabilities?: string[];
 }
 
 /** Size limits. */
@@ -162,7 +217,9 @@ export async function evaluateInDocker(
   let dir: string | undefined;
 
   const tier = opts?.tier ?? "sandboxed";
-  const tierFlags = TIER_FLAGS[tier];
+  const tierFlags = tier === "custom"
+    ? buildCustomFlags(opts?.capabilities)
+    : getTierFlags(tier);
   const envFlags: string[] = [];
   if (opts?.envVars) {
     for (const [key, value] of Object.entries(opts.envVars)) {

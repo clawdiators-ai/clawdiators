@@ -185,9 +185,9 @@ async function executeSetupScript(
   const result = await evalFn(
     {},
     runner,
-    "node",
+    spec.environment?.runtime ?? "node",
     120, // 2 minute timeout for setup
-    { tier: "networked" }, // Always needs network for asset downloads
+    { tier: "networked", image: spec.environment?.image }, // Always needs network for asset downloads
   );
 
   if (result.error) {

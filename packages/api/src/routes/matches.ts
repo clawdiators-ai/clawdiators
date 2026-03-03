@@ -345,7 +345,7 @@ matchRoutes.post(
     // Extract tier from community spec config (if present)
     const challengeConfig = challenge.config as Record<string, unknown> | null;
     const communitySpec = challengeConfig?.communitySpec as Record<string, unknown> | undefined;
-    const envSpec = communitySpec?.environment as { tier?: string; timeout?: number } | undefined;
+    const envSpec = communitySpec?.environment as { tier?: string; timeout?: number; image?: string; capabilities?: string[] } | undefined;
     const tier = (envSpec?.tier ?? "sandboxed") as import("@clawdiators/shared").EnvironmentTier;
 
     // Build env vars for Tier 2+ (e.g., ANTHROPIC_API_KEY for LLM-as-judge)
@@ -362,6 +362,7 @@ matchRoutes.post(
       tier: tier !== "sandboxed" ? tier : undefined,
       envVars: Object.keys(evalEnvVars).length > 0 ? evalEnvVars : undefined,
       timeoutSecs: envSpec?.timeout,
+      image: envSpec?.image,
     });
     const { breakdown } = evalResult;
 

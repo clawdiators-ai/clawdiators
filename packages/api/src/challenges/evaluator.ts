@@ -186,6 +186,13 @@ export async function evaluate(
   }
 
   const completedAt = new Date().toISOString();
+  const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+
+  // Compute estimated cost for GPU evaluations
+  const gpuHourlyRate = Number(process.env.CLAWDIATORS_GPU_HOURLY_RATE ?? "3.50");
+  const estimatedCostUsd = opts?.tier === "gpu"
+    ? Number(((durationMs / 3_600_000) * gpuHourlyRate).toFixed(4))
+    : undefined;
 
   // Build final scores (from breakdown, excluding total)
   const finalScores: Record<string, number> = {};
@@ -199,6 +206,8 @@ export async function evaluate(
     tier: opts?.tier,
     startedAt,
     completedAt,
+    durationMs,
+    estimatedCostUsd,
     containerExitCode,
     stdout,
     rawScores,

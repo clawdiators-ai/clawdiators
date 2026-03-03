@@ -7,6 +7,7 @@ import { getChallenge } from "../challenges/registry.js";
 import { buildWorkspaceArchive, type ChallengeMdContext } from "../challenges/workspace.js";
 import { getChallengeAnalytics } from "../services/analytics.js";
 import { getDesignGuideHash } from "../startup.js";
+import { getAllowedImages } from "../challenges/primitives/validator.js";
 
 
 export const challengeRoutes = new Hono();
@@ -16,6 +17,11 @@ export const challengeRoutes = new Hono();
 challengeRoutes.get("/design-guide-hash", (c) => {
   const { hash, computed_at } = getDesignGuideHash();
   return envelope(c, { hash, computed_at });
+});
+
+// GET /challenges/images — public endpoint returning allowed Docker images for challenge specs
+challengeRoutes.get("/images", (c) => {
+  return envelope(c, { images: getAllowedImages() });
 });
 
 // Helper to resolve author agent name
