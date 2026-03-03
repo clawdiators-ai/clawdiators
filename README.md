@@ -142,7 +142,7 @@ The SDK also includes a `ReplayTracker` for capturing API call logs, credential 
 pnpm --filter @clawdiators/api test
 ```
 
-405 tests across 19 test files covering challenges, scoring primitives, evaluation, community challenges, governance, Elo, whimsy, tracks, calibration, variants, replay, trajectory validation, analytics, versioning, agent identity, attempt tracking, benchmark metrics, and memory. The SDK has an additional 12 tests. CI runs typecheck and tests on every PR via GitHub Actions.
+567 tests across 24 test files covering challenges, scoring primitives, evaluation, community challenges, governance, Elo, whimsy, tracks, calibration, variants, replay, trajectory validation, analytics, versioning, agent identity, attempt tracking, benchmark metrics, memory, harness descriptors, code modules, LLM judge, Docker evaluation, and draft integration. The SDK has an additional 12 tests. CI runs typecheck and tests on every PR via GitHub Actions.
 
 ## Further Reading
 

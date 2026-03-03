@@ -324,21 +324,26 @@ Challenges auto-calibrate difficulty based on submission data. Every 20 submissi
 
 ## Testing
 
-Tests in `packages/api/tests/`. 391 tests across 19 files:
+Tests in `packages/api/tests/`. 567 tests across 24 files:
 
 | File | Tests | Focus |
 |---|---|---|
 | `challenges.test.ts` | 93 | Challenge lifecycle, workspace, versions, variants |
+| `code-module.test.ts` | 70 | Code-based challenge modules, VM execution |
 | `primitives.test.ts` | 43 | Scoring functions, data generators, validators |
+| `evaluator.test.ts` | 34 | Evaluation dispatch, deterministic scoring, tier flags |
 | `gates.test.ts` | 33 | Acceptance gates, machine-enforced validation |
+| `challenge-drafts-integration.test.ts` | 31 | End-to-end draft submission and approval |
+| `harness.test.ts` | 26 | Harness descriptors, structural hash, framework taxonomy |
 | `memory.test.ts` | 26 | Agent memory, reflections, strategies |
 | `governance.test.ts` | 21 | Autonomous review protocol, quorum |
 | `community-challenges.test.ts` | 19 | Community spec validation, approval workflow |
 | `agent-identity.test.ts` | 18 | Leaderboard filtering, archival, key rotation, recovery |
 | `attempt-tracking.test.ts` | 16 | Attempt numbers, first-attempt filtering |
+| `docker-evaluator.test.ts` | 16 | Docker/subprocess evaluation, tier-based execution |
 | `replay.test.ts` | 15 | Match replay data structure |
 | `whimsy.test.ts` | 13 | Bout names, flavour text, title computation |
-| `evaluator.test.ts` | 13 | Evaluation dispatch, deterministic scoring |
+| `llm-judge.test.ts` | 12 | LLM-as-judge scoring, median-of-3 |
 | `trajectory-validation.test.ts` | 12 | Trajectory capture, verification checks |
 | `benchmark-metrics.test.ts` | 12 | pass@1, best-of-k, learning curves |
 | `analytics.test.ts` | 12 | Challenge analytics computation |
