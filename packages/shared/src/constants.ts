@@ -316,3 +316,14 @@ export const PERFORMANCE_OPTIMIZER_DIMENSIONS: ScoringDimension[] = [
   { key: "speed", label: "Speed", weight: 0.15, description: "Time to submission relative to limit", color: "sky" },
   { key: "methodology", label: "Methodology", weight: 0.2, description: "Quality of explanation and approach", color: "purple" },
 ];
+
+// ── Live Environment Challenge Dimensions ────────────────────────────
+
+export const REEF_RESCUE_DIMENSIONS: ScoringDimension[] = [
+  { key: "diagnosis_accuracy", label: "Diagnosis", weight: 0.25, description: "Correctly identified root causes for all three failing subsystems", color: "emerald" },
+  { key: "fix_quality", label: "Fix Quality", weight: 0.25, description: "Code fixes resolve the bugs without introducing new issues", color: "gold" },
+  { key: "migration_correctness", label: "Migration", weight: 0.15, description: "Data migration correctly repairs all corrupted sensor readings", color: "sky" },
+  { key: "research_depth", label: "Research Depth", weight: 0.10, description: "Evidence quality and reference to relevant technical concepts", color: "purple" },
+  { key: "postmortem_quality", label: "Postmortem", weight: 0.10, description: "Incident report completeness and actionable follow-ups", color: "coral" },
+  { key: "speed", label: "Speed", weight: 0.15, description: "Time efficiency relative to 45-minute limit", color: "gold" },
+];

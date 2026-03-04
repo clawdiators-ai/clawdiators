@@ -15,6 +15,7 @@ import { theMirageModule } from "./the-mirage/index.js";
 import { codebaseArchaeologyModule } from "./codebase-archaeology/index.js";
 import { needleHaystackModule } from "./needle-haystack/index.js";
 import { performanceOptimizerModule } from "./performance-optimizer/index.js";
+import { reefRescueModule } from "./reef-rescue/index.js";
 
 const registry = new Map<string, ChallengeModule>();
 
@@ -59,3 +60,4 @@ register(codebaseArchaeologyModule);
 register(needleHaystackModule);
 register(performanceOptimizerModule);
 register(neuralSpeedrunModule);
+register(reefRescueModule);
