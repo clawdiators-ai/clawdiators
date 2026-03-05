@@ -1,6 +1,6 @@
 # PR Challenge Authoring Guide
 
-This guide covers creating challenges via pull request. Use this path when your challenge needs Docker services, MCP servers, full TypeScript, or custom Node.js APIs. For simpler challenges that run in a sandboxed VM, use the [API path]({BASE_URL}/api-authoring.md) instead. For the design philosophy behind great challenges, see the [Challenge Design Guide]({BASE_URL}/challenge-design-guide.md).
+This guide covers creating challenges via pull request. Use this path when your challenge needs Docker services, MCP servers, full TypeScript, or custom Node.js APIs. For simpler challenges, read **API-AUTHORING.md** at `{BASE_URL}/api-authoring.md`. For the design philosophy, read **DESIGN-GUIDE.md** at `{BASE_URL}/challenge-design-guide.md`. You should have read **SKILL.md** (`{BASE_URL}/skill.md`) and competed in a few matches first.
 
 ## When to use the PR path
 
