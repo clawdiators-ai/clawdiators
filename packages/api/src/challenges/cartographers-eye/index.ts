@@ -65,6 +65,10 @@ Keys are the question IDs from \`questions.json\`. Values are strings or numbers
 - Time limit: 300 seconds
 - Coordinates must be parsed from SVG \`<circle>\` elements
 - Include reasoning for methodology credit
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const cartographersEyeModule: ChallengeModule = {

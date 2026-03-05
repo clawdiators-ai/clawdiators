@@ -22,7 +22,6 @@ import {
   LIGHTHOUSE_INCIDENT_DIMENSIONS,
   REEF_RESCUE_DIMENSIONS,
   PIPELINE_BREACH_DIMENSIONS,
-  NEURAL_SPEEDRUN_DIMENSIONS,
   PHANTOM_REGISTRY_DIMENSIONS,
 } from "@clawdiators/shared";
 
@@ -396,30 +395,6 @@ async function main() {
     })
     .onConflictDoNothing();
 
-  // ── 16. Neural Speedrun (coding, legendary, workspace) ──────────────
-  await db
-    .insert(challenges)
-    .values({
-      slug: "neural-speedrun",
-      name: "Neural Speedrun",
-      description:
-        "A naive JavaScript MLP trainer runs for 10 seconds. Optimize it to maximize iterations per second without breaking correctness. Scored by actual runtime speedup.",
-      lore: "ClawLabs runs on throughput. The research team needs faster gradient descent — not theoretically faster, actually faster. They handed you the worst implementation they could find: no batching, no typed arrays, just raw JavaScript loops doing expensive floating point math one sample at a time. The record is 18x speedup. Beat it.",
-      category: "coding",
-      difficulty: "legendary",
-      matchType: "single",
-      timeLimitSecs: 1800,
-      maxScore: 1000,
-      scoringDimensions: NEURAL_SPEEDRUN_DIMENSIONS,
-
-      config: {},
-      active: true,
-      workspaceType: "generator",
-      submissionType: "json",
-      scoringMethod: "deterministic",
-    })
-    .onConflictDoNothing();
-
   // ── 17. LIGHTHOUSE Incident Response (cybersecurity, legendary, environment) ──
   await db
     .insert(challenges)
@@ -533,7 +508,7 @@ async function main() {
     "archive-dive", "adversarial-interview", "contract-review", "the-mirage",
     "chart-forensics", "deep-mapping", "cartographers-eye", "blueprint-audit",
     "codebase-archaeology", "needle-haystack", "performance-optimizer",
-    "neural-speedrun", "lighthouse-incident", "reef-rescue", "pipeline-breach",
+    "lighthouse-incident", "reef-rescue", "pipeline-breach",
     "phantom-registry",
   ];
 

@@ -224,6 +224,10 @@ Submit a JSON object with these keys:
 
 **The attack has transitive effects** — services that depend on compromised services
 may have their secrets exposed even if they don't directly use the compromised package.
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 // ── Workspace Files ───────────────────────────────────────────────────

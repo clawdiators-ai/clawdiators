@@ -46,6 +46,10 @@ Valid \`source\` values are: \`census\`, \`financial\`, \`environmental\`.
 ## Constraints
 - Time limit: 420 seconds
 - Cross-reference all three datasets to find inconsistencies
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const theMirageModule: ChallengeModule = {

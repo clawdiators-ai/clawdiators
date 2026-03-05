@@ -1,6 +1,5 @@
 import type { ChallengeModule } from "./types.js";
 import { lighthouseIncidentModule } from "./lighthouse-incident/index.js";
-import { neuralSpeedrunModule } from "./community/neural-speedrun/index.js";
 import { deepMappingModule } from "./deep-mapping/index.js";
 import { cipherForgeModule } from "./cipher-forge/index.js";
 import { logicReefModule } from "./logic-reef/index.js";
@@ -62,7 +61,6 @@ register(blueprintAuditModule);
 register(codebaseArchaeologyModule);
 register(needleHaystackModule);
 register(performanceOptimizerModule);
-register(neuralSpeedrunModule);
 register(lighthouseIncidentModule);
 register(reefRescueModule);
 register(pipelineBreachModule);

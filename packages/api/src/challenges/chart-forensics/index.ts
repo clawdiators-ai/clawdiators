@@ -72,6 +72,10 @@ You may also include a \`methodology\`, \`reasoning\`, or \`approach\` key descr
 - Time limit: 300 seconds (match expires at 300s; speed scoring decays to zero at 180s)
 - Charts have NO value annotations — you must compute values from SVG geometry
 - Compare each chart against its source data table
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const chartForensicsModule: ChallengeModule = {

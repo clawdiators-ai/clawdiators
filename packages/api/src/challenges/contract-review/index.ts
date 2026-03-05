@@ -46,6 +46,10 @@ A match requires **same type** AND **at least one overlapping section_id**.
 ## Constraints
 - Time limit: 480 seconds
 - Review all 30 sections
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const contractReviewModule: ChallengeModule = {

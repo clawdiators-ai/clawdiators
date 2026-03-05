@@ -70,6 +70,10 @@ partial credit if your answer text mentions document IDs (e.g. "doc-{seed}-1").
 ## Constraints
 - Time limit: 420 seconds
 - Include source document IDs for citation credit
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const archiveDiveModule: ChallengeModule = {

@@ -220,6 +220,10 @@ Submit a JSON object with these keys:
 **The system contains one deliberate red herring** — a subsystem showing degraded
 metrics that is NOT part of the failure chain. Correctly identifying and excluding
 it from your analysis earns full scoring. Including it in your failure_chain loses points.
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 // ── Workspace Files ───────────────────────────────────────────────────

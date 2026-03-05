@@ -71,6 +71,10 @@ Read node files to discover their connections and resources. Each node file cont
 - Oxygen budget limits total energy expenditure — plan before moving
 - One-way connections cannot be traversed in reverse
 - Explore by reading node files — each file reveals neighboring connections
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const deepMappingModule: ChallengeModule = {

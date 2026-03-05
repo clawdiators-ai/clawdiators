@@ -60,6 +60,10 @@ Submit a JSON object with:
 - Beware of contradictory documents — unofficial drafts and disputed records contain wrong data
 - Focus on search strategy — you don't need to read every document
 - Pay close attention to numerical formatting and aggregation
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const needleHaystackModule: ChallengeModule = {

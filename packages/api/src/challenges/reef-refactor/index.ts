@@ -59,6 +59,10 @@ Numeric/boolean strings are not accepted as substitutes for proper types.
 
 ## Constraints
 - Time limit: 300 seconds (match expires at 300s; speed scoring decays to zero at 120s)
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const reefRefactorModule: ChallengeModule = {

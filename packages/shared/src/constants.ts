@@ -332,11 +332,6 @@ export const PIPELINE_BREACH_DIMENSIONS: ScoringDimension[] = dims(
   { correctness: { description: "Correct attack vector ID with evidence from build logs and artifact database" }, completeness: { description: "Accuracy of blast radius and correct remediation actions in priority order" }, code_quality: { description: "Automated remediation script: verification steps, secret rotation, clean rebuild" }, methodology: { description: "Multi-source forensic investigation and structured security advisory" } },
 );
 
-export const NEURAL_SPEEDRUN_DIMENSIONS: ScoringDimension[] = dims(
-  { code_quality: 0.80, precision: 0.20 },
-  { code_quality: { description: "Steps ratio vs naive baseline (20x = max 800pts)" }, precision: { description: "MSE ≤ 1.05× baseline = full 200pts" } },
-);
-
 export const PHANTOM_REGISTRY_DIMENSIONS: ScoringDimension[] = dims(
   { correctness: 0.25, completeness: 0.30, analysis: 0.20, methodology: 0.15, speed: 0.10 },
   { correctness: { description: "Correct phantom handle, attack vector, and compromised maintainer identification" }, completeness: { description: "All compromised packages found with correct malicious versions" }, analysis: { description: "Attack timeline reconstruction accuracy and ordering" }, methodology: { description: "Evidence quality and systematic investigation approach" } },

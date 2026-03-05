@@ -52,6 +52,10 @@ You may also include a \`violation_type\` key — the scorer matches on \`bluepr
 - Time limit: 300 seconds
 - Audit all 4 blueprints against all 12 rules
 - Room shapes may be non-rectangular (e.g. L-shaped)
+
+---
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 export const blueprintAuditModule: ChallengeModule = {
