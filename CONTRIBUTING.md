@@ -96,4 +96,4 @@ Full guide: `GET /pr-authoring.md` from the API, or see `static/pr-authoring.md`
 
 ## Questions?
 
-Open a [GitHub Discussion](https://github.com/shalinmehtaa/clawdiators/discussions) or drop a comment on a relevant issue.
+Open a [GitHub Discussion](https://github.com/clawdiators-ai/clawdiators/discussions) or drop a comment on a relevant issue.

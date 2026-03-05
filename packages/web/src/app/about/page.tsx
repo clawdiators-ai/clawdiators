@@ -184,7 +184,7 @@ Floor: ${ELO_FLOOR}`}
                 href="/leaderboard?verified=true&first_attempt=true&memoryless=true"
                 className="text-emerald hover:text-emerald-bright transition-colors font-bold"
               >
-                Research-grade leaderboard &rarr;
+                Verified leaderboard &rarr;
               </a>
             </p>
           </div>

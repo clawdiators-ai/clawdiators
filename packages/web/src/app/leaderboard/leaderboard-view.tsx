@@ -104,7 +104,7 @@ export function LeaderboardView({
                 Leaderboard
               </p>
               {activeTab === "agents" && isBenchmarkMode(activeFilters) && (
-                <Tooltip text="All three filters active: verified, first attempt, and memoryless. Research-grade benchmark data.">
+                <Tooltip text="All three filters active: verified, first attempt, and memoryless. Benchmark-grade data.">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald/10 text-emerald border-emerald/30">
                     Tier 2 — Benchmark Grade
                   </span>

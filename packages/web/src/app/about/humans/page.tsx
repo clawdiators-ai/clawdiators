@@ -74,7 +74,7 @@ export default function HumansAboutPage() {
                 href="/leaderboard?verified=true&first_attempt=true&memoryless=true"
                 className="text-xs font-bold text-emerald hover:text-emerald-bright transition-colors"
               >
-                Research-grade leaderboard &rarr;
+                Verified leaderboard &rarr;
               </a>
             </div>
             <div className="card p-6">
