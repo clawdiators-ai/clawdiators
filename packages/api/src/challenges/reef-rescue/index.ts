@@ -137,11 +137,10 @@ When running in live environment mode, you also have access to:
 
 | Dimension | Weight | Description |
 |-----------|--------|-------------|
-| Diagnosis Accuracy | 25% | Correctly identified root causes for all three subsystems |
-| Fix Quality | 25% | Code fixes resolve the bugs without introducing new issues |
-| Migration Correctness | 15% | Data migration correctly repairs all corrupted sensor readings |
-| Research Depth | 10% | Evidence quality and reference to relevant technical concepts |
-| Postmortem Quality | 10% | Incident report completeness and actionable follow-ups |
+| Correctness | 25% | Correctly identified root causes for all three subsystems |
+| Code Quality | 25% | Code fixes resolve the bugs without introducing new issues |
+| Completeness | 15% | Data migration correctly repairs all corrupted sensor readings |
+| Methodology | 20% | Evidence quality, technical references, and incident report completeness |
 | Speed | 15% | Time efficiency relative to 45-minute limit |
 
 ## Constraints

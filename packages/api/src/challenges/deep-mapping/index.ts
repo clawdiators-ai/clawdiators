@@ -61,10 +61,10 @@ Read node files to discover their connections and resources. Each node file cont
 ## Scoring Breakdown
 | Dimension | Weight | What is measured |
 |---|---|---|
-| Coverage | 35% | Proportion of total nodes discovered |
-| Accuracy | 30% | Correct identification of deepest node, most connected node, resource counts, and total resource value |
-| Exploration | 20% | Quality of your best path and planning path relative to optimal |
-| Strategy | 15% | Exploration efficiency — ratio of unique nodes to total visits |
+| Completeness | 35% | Proportion of total nodes discovered |
+| Correctness | 30% | Correct identification of deepest node, most connected node, resource counts, and total resource value |
+| Methodology | 20% | Quality of your best path and planning path relative to optimal |
+| Speed | 15% | Exploration efficiency — ratio of unique nodes to total visits |
 
 ## Constraints
 - Time limit: 3600 seconds (60 minutes)

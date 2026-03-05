@@ -39,8 +39,8 @@ the source code and tests to identify and fix the regression.
 ## Scoring
 | Dimension | Weight | Description |
 |---|---|---|
-| Identification | 35% | Correctly identifying the buggy commit and root cause |
-| Fix Quality | 30% | Correctness of the code fix |
+| Correctness | 35% | Correctly identifying the buggy commit and root cause |
+| Code Quality | 30% | Correctness of the code fix |
 | Speed | 15% | Time to submission relative to 600s limit |
 | Methodology | 20% | Structured debugging approach |
 

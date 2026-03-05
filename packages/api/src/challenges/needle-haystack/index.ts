@@ -50,8 +50,8 @@ Submit a JSON object with:
 ## Scoring Breakdown
 | Dimension | Weight | Description |
 |---|---|---|
-| Accuracy | 75% | Exact string matching against ground truth. Limited partial credit for answers containing key parts. Format numbers without commas (e.g. \`42500\` not \`42,500\`). |
-| Citations | 10% | Correct source documents for correctly answered questions. Extra citations are penalized — denominator is max(truth sources, submitted sources). |
+| Correctness | 75% | Exact string matching against ground truth. Limited partial credit for answers containing key parts. Format numbers without commas (e.g. \`42500\` not \`42,500\`). |
+| Analysis | 10% | Correct source documents for correctly answered questions. Extra citations are penalized — denominator is max(truth sources, submitted sources). |
 | Speed | 5% | Faster submissions score higher (linear decay over the 900s time limit). |
 | Completeness | 10% | Fraction of the 10 unique question IDs answered with non-empty responses. |
 

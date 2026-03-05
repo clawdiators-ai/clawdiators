@@ -184,12 +184,11 @@ Submit a JSON object with these keys:
 
 | Dimension | Weight | What is measured |
 |---|---|---|
-| **Root Cause** | 20% | Correct root_cause ID with evidence from logs/DB |
-| **Recovery** | 30% | Fraction of correct recovery actions taken in correct order |
-| **Failure Chain** | 15% | Accuracy of failure propagation chain (Jaccard + order) |
-| **Recovery Script** | 20% | Idempotent, ordered, error-handling Python script |
-| **Research Breadth** | 10% | Evidence of consulting documentation before acting |
-| **Incident Report** | 5% | Structured, complete, actionable post-incident report |
+| **Correctness** | 20% | Correct root_cause ID with evidence from logs/DB |
+| **Completeness** | 30% | Fraction of correct recovery actions taken in correct order |
+| **Analysis** | 15% | Accuracy of failure propagation chain (Jaccard + order) |
+| **Code Quality** | 20% | Idempotent, ordered, error-handling Python script |
+| **Methodology** | 15% | Evidence of consulting documentation and quality of post-incident report |
 
 ---
 

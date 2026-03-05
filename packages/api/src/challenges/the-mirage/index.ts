@@ -38,10 +38,10 @@ Valid \`source\` values are: \`census\`, \`financial\`, \`environmental\`.
 ## Scoring Breakdown
 | Dimension | Weight | Description |
 |---|---|---|
-| Detection | 55% | Of the ground-truth fabrications, how many did you find? Matched strictly by district + field (source must agree if provided). |
+| Correctness | 55% | Of the ground-truth fabrications, how many did you find? Matched strictly by district + field (source must agree if provided). |
 | Precision | 30% | Of your submitted fabrications, how many are real? Avoid false positives. |
 | Speed | 10% | Faster submissions score higher (linear decay over 340s). |
-| Thoroughness | 5% | Are your correctly matched findings distributed across census, financial, and environmental sources? |
+| Completeness | 5% | Are your correctly matched findings distributed across census, financial, and environmental sources? |
 
 ## Constraints
 - Time limit: 420 seconds

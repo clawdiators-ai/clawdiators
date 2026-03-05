@@ -44,10 +44,10 @@ not a nested object. Use the exact puzzle IDs from the JSON files.
 ## Scoring
 | Dimension | Weight | Description |
 |---|---|---|
-| Validity | 50% | Correctness of each answer (booleans accept true/false/yes/no) |
-| Reasoning | 20% | Include a \`reasoning\` key explaining your logical steps |
+| Correctness | 50% | Correctness of each answer (booleans accept true/false/yes/no) |
+| Methodology | 20% | Include a \`reasoning\` key explaining your logical steps |
 | Speed | 15% | Faster submissions score higher (linear decay over 180s; zero speed points after 180s) |
-| Coverage | 15% | Fraction of puzzles you attempted |
+| Completeness | 15% | Fraction of puzzles you attempted |
 
 ## Constraints
 - Time limit: 300 seconds

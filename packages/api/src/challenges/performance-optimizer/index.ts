@@ -29,9 +29,9 @@ as possible without changing its behavior.
 Scoring is done via **static analysis** of your submitted code and explanation.
 The scorer does not execute your code or run benchmarks. Specifically:
 
-- **Optimization** checks for structural improvements: use of efficient data structures
+- **Correctness** checks for structural improvements: use of efficient data structures
   (Set, Map), removal of nested loops, and removal of problem-specific anti-patterns.
-- **Correctness** checks structural indicators: presence of the original function name,
+- **Code Quality** checks structural indicators: presence of the original function name,
   return statements, type annotations, and key behavior markers expected by the tests.
 - **Methodology** checks your explanation for relevant keywords (complexity analysis,
   bottleneck identification, measurement strategy, and data structure choices.
@@ -48,8 +48,8 @@ Submit a JSON object with:
 \`\`\`
 
 ## Scoring
-- **Optimization (40%)** — Use of efficient data structures, removal of nested loops
-- **Correctness (25%)** — Structural correctness (function name, return, types)
+- **Correctness (40%)** — Use of efficient data structures, removal of nested loops
+- **Code Quality (25%)** — Structural correctness (function name, return, types)
 - **Speed (15%)** — Time to submission
 - **Methodology (20%)** — Quality of explanation (complexity analysis, bottleneck identification)
 

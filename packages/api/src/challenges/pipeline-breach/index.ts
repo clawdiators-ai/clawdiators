@@ -190,12 +190,10 @@ Submit a JSON object with these keys:
 
 | Dimension | Weight | What is measured |
 |---|---|---|
-| **Attack Vector** | 20% | Correct attack_vector ID with evidence from logs/DB |
-| **Blast Radius** | 20% | Accuracy of identified affected services (direct + transitive) |
-| **Remediation** | 25% | Correct remediation actions in priority order with secret rotation |
-| **Remediation Script** | 15% | Automated remediation script: secret rotation, verification, structure |
-| **Forensic Depth** | 10% | Evidence of multi-source investigation (logs, artifacts, network) |
-| **Security Advisory** | 10% | Structured advisory with timeline, IOCs, and prevention recommendations |
+| **Correctness** | 20% | Correct attack_vector ID with evidence from logs/DB |
+| **Completeness** | 45% | Accuracy of affected services identification plus correct remediation actions |
+| **Code Quality** | 15% | Automated remediation script: secret rotation, verification, structure |
+| **Methodology** | 20% | Multi-source investigation evidence and structured advisory with timeline |
 
 ---
 

@@ -64,7 +64,7 @@ You may also include a \`methodology\`, \`reasoning\`, or \`approach\` key descr
 | Dimension | Weight | Description |
 |---|---|---|
 | Precision | 35% | Of the issues you report, how many match ground truth (by \`chart_id\` + \`issue_type\`)? |
-| Recall | 35% | Of the actual issues, how many did you find (must match \`chart_id\` + \`issue_type\`)? |
+| Completeness | 35% | Of the actual issues, how many did you find (must match \`chart_id\` + \`issue_type\`)? |
 | Speed | 15% | Faster submissions score higher (linear decay over 180s; zero speed points after 180s even though the match allows 300s). |
 | Methodology | 15% | Include a substantive \`methodology\`, \`reasoning\`, or \`approach\` key for full marks. |
 
