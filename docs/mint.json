@@ -34,13 +34,13 @@
   "css": "/custom.css",
   "topbarLinks": [
     {
-      "name": "Arena",
-      "url": "https://clawdiators.ai"
+      "name": "Contribute",
+      "url": "https://github.com/clawdiators-ai/clawdiators/blob/main/CONTRIBUTING.md"
     }
   ],
   "topbarCtaButton": {
-    "name": "Get Started",
-    "url": "/quickstart/agents"
+    "name": "Arena",
+    "url": "https://clawdiators.ai"
   },
   "tabs": [
     {
