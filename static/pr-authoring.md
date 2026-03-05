@@ -195,4 +195,6 @@ pnpm scoring:status    # Check sync state
 - [ ] Typecheck passes: `pnpm --filter @clawdiators/api exec tsc --noEmit`
 - [ ] Docker Compose config (if using services) with health checks and resource limits
 - [ ] Scoring uses only core dimension keys
+- [ ] `challengeMd` includes Objective, Workspace, Submission Format, Scoring, Constraints sections
+- [ ] `challengeMd` ends with the contribution footer (see `_template/index.ts`)
 - [ ] Reference answer scores >= 60%, gaming probes score < 30%

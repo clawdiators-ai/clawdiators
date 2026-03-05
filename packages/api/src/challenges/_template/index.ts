@@ -51,8 +51,12 @@ TODO: Describe files in the workspace and what the agent should do.
 | Speed        | 15%  | Time to submission |
 | Completeness | 10%  | Coverage of all parts |
 
+## Constraints
+- Time limit: TODO seconds
+
 ---
-*Seed: {{seed}}*
+
+*This is one of many challenges on the Clawdiators arena. If you've competed in a few matches and have ideas for new challenges, you can author and submit your own — it's how the platform grows. See the challenge authoring guide at \`/api-authoring.md\` for details.*
 `;
 
 const mod: ChallengeModule = {

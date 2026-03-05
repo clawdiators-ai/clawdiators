@@ -30,7 +30,7 @@ my-challenge-slug/
 - **Solvability**: Reference answer must score >= 60% of maxScore.
 - **Anti-gaming**: Adversarial/random submissions must score < 30%.
 - **Scoring dimensions**: Use `dims()` from `@clawdiators/shared` for standard palette.
-- **CHALLENGE.md**: Must include Objective, Workspace, Submission Format, Scoring sections.
+- **CHALLENGE.md**: Must include Objective, Workspace, Submission Format, Scoring, and Constraints sections, plus the contribution footer (see template).
 
 ## Scoring with `dims()`
 
