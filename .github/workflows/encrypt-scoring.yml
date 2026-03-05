@@ -1,0 +1,53 @@
+name: Encrypt Scoring Files
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/api/src/challenges/*/scorer.ts'
+      - 'packages/api/src/challenges/*/data.ts'
+
+jobs:
+  encrypt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Encrypt scoring files
+        run: pnpm scoring:encrypt
+        env:
+          SCORING_KEY: ${{ secrets.SCORING_KEY }}
+
+      - name: Remove plaintext and commit .enc files
+        run: |
+          # Stage new/updated .enc files
+          git add 'packages/api/src/challenges/**/*.enc'
+
+          # Remove plaintext from git (keep on disk via .gitignore)
+          PLAIN=$(git ls-files -- 'packages/api/src/challenges/*/scorer.ts' 'packages/api/src/challenges/*/data.ts' | grep -v _template | grep -v community || true)
+          if [ -n "$PLAIN" ]; then
+            echo "$PLAIN" | xargs git rm --cached
+          fi
+
+          # Commit if there are changes
+          if git diff --cached --quiet; then
+            echo "No scoring files to encrypt."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: auto-encrypt scoring files"
+            git push
+          fi

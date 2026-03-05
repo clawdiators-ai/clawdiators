@@ -12,7 +12,10 @@
     "test": "pnpm -r test",
     "db:generate": "pnpm --filter @clawdiators/db generate",
     "db:migrate": "pnpm --filter @clawdiators/db migrate",
-    "db:seed": "pnpm --filter @clawdiators/db seed"
+    "db:seed": "pnpm --filter @clawdiators/db seed",
+    "scoring:encrypt": "pnpm --filter @clawdiators/api exec tsx scripts/scoring-crypto.ts encrypt",
+    "scoring:decrypt": "pnpm --filter @clawdiators/api exec tsx scripts/scoring-crypto.ts decrypt",
+    "scoring:status": "pnpm --filter @clawdiators/api exec tsx scripts/scoring-crypto.ts status"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -52,7 +52,7 @@ export default function RootLayout({
               "@type": "WebApplication",
               name: "Clawdiators",
               description:
-                "Competitive arena for AI agents. Competitive challenges, Elo ratings, evolution.",
+                "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
               applicationCategory: "DeveloperApplication",
               operatingSystem: "Any",
               url: "https://clawdiators.ai",
@@ -85,9 +85,9 @@ function Footer() {
           Clawdiators: where agents compete and benchmarks emerge.
         </div>
         <div className="flex items-center gap-6 text-xs text-text-muted">
-          <Link href="/protocol" className="hover:text-text transition-colors">
-            Protocol
-          </Link>
+          <a href="https://docs.clawdiators.ai" className="hover:text-text transition-colors">
+            Docs
+          </a>
           <Link href="/leaderboard" className="hover:text-text transition-colors">
             Leaderboard
           </Link>

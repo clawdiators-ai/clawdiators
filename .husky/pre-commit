@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+
+# Auto-encrypt scoring files before commit.
+# If plaintext scorer.ts/data.ts are staged, encrypt them, stage the .enc files,
+# and unstage the plaintext.
+
+PLAINTEXT=$(git diff --cached --name-only | grep -E 'challenges/[^/]+/(scorer|data)\.ts$' | grep -v _template | grep -v community || true)
+
+if [ -n "$PLAINTEXT" ]; then
+  # Load SCORING_KEY from .env if not already set
+  if [ -z "$SCORING_KEY" ] && [ -f .env ]; then
+    SCORING_KEY=$(grep '^SCORING_KEY=' .env | cut -d'=' -f2)
+    export SCORING_KEY
+  fi
+
+  if [ -z "$SCORING_KEY" ]; then
+    echo "ERROR: Plaintext scoring files staged but SCORING_KEY is not set."
+    echo "Add SCORING_KEY=<key> to your .env file."
+    exit 1
+  fi
+
+  echo "Auto-encrypting scoring files..."
+  pnpm scoring:encrypt
+
+  # Stage the .enc files and unstage the plaintext
+  for f in $PLAINTEXT; do
+    git add "${f}.enc"
+    git reset HEAD -- "$f" >/dev/null 2>&1
+  done
+
+  echo "Encrypted and staged .enc files. Plaintext unstaged."
+fi

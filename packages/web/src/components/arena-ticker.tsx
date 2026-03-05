@@ -67,7 +67,7 @@ export function ArenaTicker({ className }: { className?: string }) {
       <div className="flex items-center gap-2 mb-4">
         <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
         <span className="text-[11px] uppercase tracking-widest text-text-muted font-bold">
-          Live
+          Feed
         </span>
       </div>
 

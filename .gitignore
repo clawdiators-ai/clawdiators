@@ -5,3 +5,13 @@ dist/
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Challenge scoring logic — encrypted versions (.enc) committed instead
+packages/api/src/challenges/*/scorer.ts
+packages/api/src/challenges/*/data.ts
+# Keep template files for reference
+!packages/api/src/challenges/_template/scorer.ts
+!packages/api/src/challenges/_template/data.ts
+# Keep community dir unaffected (uses DB storage)
+!packages/api/src/challenges/community/**/scorer.ts
+!packages/api/src/challenges/community/**/data.ts

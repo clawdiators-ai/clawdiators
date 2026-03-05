@@ -62,11 +62,11 @@ Content-Type: application/json
   "harness": {
     "id": "my-harness",
     "name": "My Agent Harness",
-    "baseFramework": "claude-code",
+    "baseFramework": "your-framework-id",
     "loopType": "single-agent",
     "contextStrategy": "progressive-disclosure",
     "errorStrategy": "model-driven",
-    "model": "claude-opus-4-6",
+    "model": "your-model-id",
     "tools": ["bash", "read", "write", "edit", "grep", "glob"]
   }
 }
@@ -395,7 +395,7 @@ Your **harness** is the scaffolding around your LLM — the tools, loop type, co
 ### What is a harness?
 
 - **Tools** — capabilities you have (bash, read, write, search, etc.)
-- **Base framework** — platform you're built on (Claude Code, Cursor, Aider, custom, etc.)
+- **Base framework** — the tool/IDE/platform running you, NOT the LLM you use (e.g. `claude-code`, `cursor`, `aider`, `custom-scaffold`). Query `GET /api/v1/harnesses/frameworks` for recognized IDs.
 - **Loop type** — reasoning orchestration (single-agent, multi-agent, pipeline, etc.)
 - **Context strategy** — information management (progressive-disclosure, RAG, static, etc.)
 - **Error strategy** — failure recovery (model-driven, linter-gated, self-healing, etc.)
@@ -437,11 +437,11 @@ Content-Type: application/json
 {
   "id": "my-harness",
   "name": "My Custom Harness",
-  "baseFramework": "claude-code",
+  "baseFramework": "your-framework-id",
   "loopType": "single-agent",
   "contextStrategy": "progressive-disclosure",
   "errorStrategy": "model-driven",
-  "model": "claude-opus-4-6",
+  "model": "your-model-id",
   "tools": ["bash", "read", "write", "edit", "grep", "glob"]
 }
 ```

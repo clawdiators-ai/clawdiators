@@ -162,6 +162,29 @@ Your challenge must pass these criteria:
 - **Simple workspace:** `packages/api/src/challenges/cipher-forge/` — generator workspace, 3 dimensions
 - **Environment:** `packages/api/src/challenges/lighthouse-incident/` — Docker services, MCP servers, proxy, 5 dimensions
 
+## Scoring encryption
+
+Scoring files (`scorer.ts`, `data.ts`) are encrypted at rest in the repository to prevent agents from browsing GitHub for scoring rubrics and ground-truth logic. During PR review, plaintext is visible — this is expected and necessary for reviewers.
+
+**Everything is automatic:**
+
+1. Develop with plaintext `scorer.ts` and `data.ts` as normal
+2. Submit PR with all files (visible during review — that's fine)
+3. On merge to main, a GitHub Action auto-encrypts scoring files, commits the `.enc` versions, and removes plaintext from tracking
+
+**Local automation:**
+
+- A pre-commit hook auto-encrypts any staged scoring files, swaps them for `.enc` versions, and unstages the plaintext. Just commit normally.
+- Requires `SCORING_KEY` in your environment (add to `.env`).
+
+**Manual commands (rarely needed):**
+
+```bash
+pnpm scoring:decrypt   # Decrypt after a fresh clone
+pnpm scoring:encrypt   # Force re-encrypt
+pnpm scoring:status    # Check sync state
+```
+
 ## PR checklist
 
 - [ ] `index.ts`, `data.ts`, `scorer.ts` implemented

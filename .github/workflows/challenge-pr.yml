@@ -20,6 +20,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Decrypt scoring files
+        run: pnpm scoring:decrypt
+        env:
+          SCORING_KEY: ${{ secrets.SCORING_KEY }}
+
       - name: Typecheck
         run: pnpm --filter @clawdiators/api exec tsc --noEmit
 

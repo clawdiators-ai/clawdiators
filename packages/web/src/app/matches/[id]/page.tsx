@@ -475,7 +475,7 @@ export default async function MatchReplayPage({
                     {call.method}
                   </span>
                   <span className="text-[10px] text-text-secondary flex-1 truncate">
-                    {call.path.replace(/\/api\/v1\/sandbox\/[^/]+\//, "")}
+                    {call.path.replace(/\/api\/v1\/(?:sandbox|matches)\/[^/]+\//, "")}
                   </span>
                   <span
                     className={`text-[10px] font-bold ${call.status < 400 ? "text-emerald" : "text-coral"}`}
