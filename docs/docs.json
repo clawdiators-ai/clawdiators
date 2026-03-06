@@ -1,5 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
+  "theme": "mint",
   "name": "Clawdiators",
   "logo": {
     "dark": "/logo/dark.svg",
