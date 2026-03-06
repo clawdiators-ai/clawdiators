@@ -124,30 +124,43 @@ leaderboardRoutes.get("/harnesses", async (c) => {
     conditions.push(sql`${agents.harness}->>'baseFramework' = ${frameworkFilter}`);
   }
 
-  const rows = await db
-    .select({
-      harnessId: sql<string>`${agents.harness}->>'id'`.as("harness_id"),
-      harnessName: sql<string>`${agents.harness}->>'name'`.as("harness_name"),
-      baseFramework: sql<string>`${agents.harness}->>'baseFramework'`.as("base_framework"),
-      loopType: sql<string>`${agents.harness}->>'loopType'`.as("loop_type"),
-      contextStrategy: sql<string>`${agents.harness}->>'contextStrategy'`.as("context_strategy"),
-      errorStrategy: sql<string>`${agents.harness}->>'errorStrategy'`.as("error_strategy"),
-      avgElo: sql<number>`round(avg(${agents.elo}))::int`.as("avg_elo"),
-      agentCount: sql<number>`count(*)::int`.as("agent_count"),
-      totalWins: sql<number>`sum(${agents.winCount})::int`.as("total_wins"),
-      totalMatches: sql<number>`sum(${agents.matchCount})::int`.as("total_matches"),
-    })
-    .from(agents)
-    .where(and(...conditions))
-    .groupBy(
-      sql`${agents.harness}->>'id'`,
-      sql`${agents.harness}->>'name'`,
-      sql`${agents.harness}->>'baseFramework'`,
-      sql`${agents.harness}->>'loopType'`,
-      sql`${agents.harness}->>'contextStrategy'`,
-      sql`${agents.harness}->>'errorStrategy'`,
-    )
-    .orderBy(desc(sql`avg(${agents.elo})`));
+  const groupBy = c.req.query("group_by") === "id" ? "id" : "framework";
+
+  const rows = groupBy === "id"
+    ? await db
+        .select({
+          harnessId: sql<string>`${agents.harness}->>'id'`.as("harness_id"),
+          harnessName: sql<string>`mode() within group (order by ${agents.harness}->>'name')`.as("harness_name"),
+          baseFramework: sql<string>`mode() within group (order by ${agents.harness}->>'baseFramework')`.as("base_framework"),
+          loopType: sql<string>`mode() within group (order by ${agents.harness}->>'loopType')`.as("loop_type"),
+          contextStrategy: sql<string>`mode() within group (order by ${agents.harness}->>'contextStrategy')`.as("context_strategy"),
+          errorStrategy: sql<string>`mode() within group (order by ${agents.harness}->>'errorStrategy')`.as("error_strategy"),
+          avgElo: sql<number>`round(avg(${agents.elo}))::int`.as("avg_elo"),
+          agentCount: sql<number>`count(*)::int`.as("agent_count"),
+          totalWins: sql<number>`sum(${agents.winCount})::int`.as("total_wins"),
+          totalMatches: sql<number>`sum(${agents.matchCount})::int`.as("total_matches"),
+        })
+        .from(agents)
+        .where(and(...conditions))
+        .groupBy(sql`${agents.harness}->>'id'`)
+        .orderBy(desc(sql`avg(${agents.elo})`))
+    : await db
+        .select({
+          harnessId: sql<string>`${agents.harness}->>'baseFramework'`.as("harness_id"),
+          harnessName: sql<string>`${agents.harness}->>'baseFramework'`.as("harness_name"),
+          baseFramework: sql<string>`${agents.harness}->>'baseFramework'`.as("base_framework"),
+          loopType: sql<string>`mode() within group (order by ${agents.harness}->>'loopType')`.as("loop_type"),
+          contextStrategy: sql<string>`mode() within group (order by ${agents.harness}->>'contextStrategy')`.as("context_strategy"),
+          errorStrategy: sql<string>`mode() within group (order by ${agents.harness}->>'errorStrategy')`.as("error_strategy"),
+          avgElo: sql<number>`round(avg(${agents.elo}))::int`.as("avg_elo"),
+          agentCount: sql<number>`count(*)::int`.as("agent_count"),
+          totalWins: sql<number>`sum(${agents.winCount})::int`.as("total_wins"),
+          totalMatches: sql<number>`sum(${agents.matchCount})::int`.as("total_matches"),
+        })
+        .from(agents)
+        .where(and(...conditions, sql`${agents.harness}->>'baseFramework' is not null`))
+        .groupBy(sql`${agents.harness}->>'baseFramework'`)
+        .orderBy(desc(sql`avg(${agents.elo})`));
 
   return envelope(
     c,

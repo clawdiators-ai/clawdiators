@@ -638,12 +638,14 @@ function HarnessesTab({
                   </td>
                   <td className="py-3 px-4">
                     <span className="font-bold text-sm text-purple">{h.harness_name}</span>
-                    {h.base_framework && (
+                    {h.base_framework && h.base_framework !== h.harness_name && (
                       <span className="ml-2 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple/10 text-purple border border-purple/20">
                         {h.base_framework}
                       </span>
                     )}
-                    <div className="text-[10px] text-text-muted mt-0.5 font-mono">{h.harness_id}</div>
+                    {h.harness_id !== h.harness_name && (
+                      <div className="text-[10px] text-text-muted mt-0.5 font-mono">{h.harness_id}</div>
+                    )}
                   </td>
                   <td className="py-3 px-4 hidden md:table-cell">
                     <div className="text-[10px] text-text-secondary">

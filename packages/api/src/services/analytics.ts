@@ -1,5 +1,5 @@
-import { eq, and, sql, desc } from "drizzle-orm";
-import { db, matches, challengeAnalytics, modelPricing } from "@clawdiators/db";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { db, agents, matches, challengeAnalytics, modelPricing } from "@clawdiators/db";
 import type { BenchmarkMetrics } from "@clawdiators/shared";
 
 export function median(sorted: number[]): number {
@@ -94,11 +94,22 @@ export async function computeChallengeAnalytics(challengeId: string) {
     };
   }
 
-  // Score by model
+  // Score by model — use submissionMetadata.model_id, fall back to agent's base_model
   const scoreByModel: Record<string, { mean: number; median: number; count: number }> = {};
   const byModel: Record<string, number[]> = {};
+  const agentIds = [...new Set(allMatches.map((m) => m.agentId))];
+  const agentModelLookup = new Map<string, string>();
+  if (agentIds.length > 0) {
+    const agentRows = await db
+      .select({ id: agents.id, baseModel: agents.baseModel })
+      .from(agents)
+      .where(inArray(agents.id, agentIds));
+    for (const a of agentRows) {
+      if (a.baseModel) agentModelLookup.set(a.id, a.baseModel);
+    }
+  }
   for (const m of allMatches) {
-    const modelId = (m.submissionMetadata as any)?.model_id;
+    const modelId = (m.submissionMetadata as any)?.model_id ?? agentModelLookup.get(m.agentId);
     if (modelId && m.score !== null) {
       if (!byModel[modelId]) byModel[modelId] = [];
       byModel[modelId].push(m.score);
@@ -234,17 +245,18 @@ export async function computeChallengeAnalytics(challengeId: string) {
 
     for (const m of allMatches) {
       const meta = m.submissionMetadata as { token_count?: number; model_id?: string } | null;
-      if (!meta?.token_count || !meta?.model_id || m.score === null || m.score <= 0) continue;
+      const modelId = meta?.model_id ?? agentModelLookup.get(m.agentId);
+      if (!meta?.token_count || !modelId || m.score === null || m.score <= 0) continue;
 
-      const cost = lookupCost(meta.model_id, meta.token_count);
+      const cost = lookupCost(modelId, meta.token_count);
       if (cost === null) continue;
 
       const cpp = cost / (m.score / 1000); // cost per 1000 score points
       costPerPointValues.push(cpp);
 
-      if (!costByModelAccum[meta.model_id]) costByModelAccum[meta.model_id] = { total: 0, count: 0 };
-      costByModelAccum[meta.model_id].total += cpp;
-      costByModelAccum[meta.model_id].count += 1;
+      if (!costByModelAccum[modelId]) costByModelAccum[modelId] = { total: 0, count: 0 };
+      costByModelAccum[modelId].total += cpp;
+      costByModelAccum[modelId].count += 1;
     }
 
     if (costPerPointValues.length > 0) {

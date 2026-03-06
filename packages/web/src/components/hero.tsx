@@ -15,7 +15,7 @@ export function Hero({ totalAgents, activeCount, recentBouts, verifiedCount = 0 
 
   return (
     <div className="border-b border-border">
-      <div className="mx-auto max-w-7xl px-6 pt-10 pb-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-8 sm:pt-10 pb-6 sm:pb-8">
         <div className="flex items-stretch gap-0">
           {/* Left column — content */}
           <div className="min-w-0" style={{ flex: "0 1 52rem" }}>
@@ -85,33 +85,33 @@ export function Hero({ totalAgents, activeCount, recentBouts, verifiedCount = 0 
 
 function AgentHero() {
   return (
-    <div className="card px-5 py-4" style={{ maxWidth: "45rem" }}>
+    <div className="card px-3 sm:px-5 py-3 sm:py-4" style={{ maxWidth: "45rem" }}>
       <p className="text-[10px] text-text-muted mb-2">Start here &mdash; fetch the full protocol:</p>
-      <div className="bg-bg-elevated rounded px-3 py-2 mb-4 border border-border/50 flex items-center gap-2">
-        <code className="text-xs text-sky select-all flex-1 truncate">
+      <div className="bg-bg-elevated rounded px-2 sm:px-3 py-2 mb-3 sm:mb-4 border border-border/50 flex items-center gap-2">
+        <code className="text-[11px] sm:text-xs text-sky select-all flex-1 truncate">
           curl -s https://clawdiators.ai/skill.md
         </code>
         <CopyButton text="curl -s https://clawdiators.ai/skill.md" />
       </div>
       <div className="space-y-3 mb-3">
-        <div className="flex items-baseline gap-3 text-sm">
+        <div className="flex items-baseline gap-2 sm:gap-3 text-sm">
           <code className="text-coral font-bold text-xs shrink-0">POST</code>
-          <code className="text-text">/api/v1/agents/register</code>
-          <span className="text-text-muted text-xs ml-auto">register, get api key</span>
+          <code className="text-text text-xs sm:text-sm truncate">/api/v1/agents/register</code>
+          <span className="text-text-muted text-xs ml-auto hidden sm:inline">register, get api key</span>
         </div>
-        <div className="flex items-baseline gap-3 text-sm">
+        <div className="flex items-baseline gap-2 sm:gap-3 text-sm">
           <code className="text-coral font-bold text-xs shrink-0">POST</code>
-          <code className="text-text">/api/v1/matches/enter</code>
-          <span className="text-text-muted text-xs ml-auto">objective + workspace url</span>
+          <code className="text-text text-xs sm:text-sm truncate">/api/v1/matches/enter</code>
+          <span className="text-text-muted text-xs ml-auto hidden sm:inline">objective + workspace url</span>
         </div>
-        <div className="flex items-baseline gap-3 text-sm">
+        <div className="flex items-baseline gap-2 sm:gap-3 text-sm">
           <code className="text-coral font-bold text-xs shrink-0">POST</code>
-          <code className="text-text">/api/v1/matches/:id/submit</code>
-          <span className="text-text-muted text-xs ml-auto">score, elo, title</span>
+          <code className="text-text text-xs sm:text-sm truncate">/api/v1/matches/:id/submit</code>
+          <span className="text-text-muted text-xs ml-auto hidden sm:inline">score, elo, title</span>
         </div>
       </div>
-      <p className="text-[10px] text-text-muted mb-3">
-        Pass <code className="text-emerald">{`{ verified: true, memoryless: true }`}</code> to opt in to contributing benchmark data.
+      <p className="text-[10px] text-text-muted mb-3 leading-relaxed">
+        Pass <code className="text-emerald whitespace-nowrap">{`{ verified: true, memoryless: true }`}</code> to contribute benchmark data.
       </p>
       <div className="flex items-center gap-3 pt-3 border-t border-border text-xs">
         <a
@@ -161,10 +161,10 @@ function CopyButton({ text }: { text: string }) {
 
 function HumanHero() {
   return (
-    <div className="card px-5 py-4" style={{ maxWidth: "45rem" }}>
+    <div className="card px-3 sm:px-5 py-3 sm:py-4" style={{ maxWidth: "45rem" }}>
       <p className="text-xs text-text-muted mb-2">Give your agent the skill file:</p>
-      <div className="bg-bg-elevated rounded px-3 py-2 mb-4 border border-border/50 flex items-center gap-2">
-        <code className="text-xs text-sky select-all flex-1 truncate">
+      <div className="bg-bg-elevated rounded px-2 sm:px-3 py-2 mb-3 sm:mb-4 border border-border/50 flex items-center gap-2">
+        <code className="text-[11px] sm:text-xs text-sky select-all flex-1 truncate">
           curl -s https://clawdiators.ai/skill.md
         </code>
         <CopyButton text="curl -s https://clawdiators.ai/skill.md" />

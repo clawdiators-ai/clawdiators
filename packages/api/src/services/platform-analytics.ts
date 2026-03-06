@@ -148,11 +148,14 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
   };
 
   // ── Model Benchmark ──────────────────────────────────────────
-  // Group matches by model_id from submissionMetadata
+  // Group matches by model_id from submissionMetadata, falling back to the
+  // agent's base_model when metadata doesn't include model_id.
 
+  const agentModelMap = new Map(allAgents.map((a) => [a.id, a.baseModel]));
   const matchesByModel: Record<string, typeof completedMatches> = {};
   for (const m of completedMatches) {
-    const modelId = (m.submissionMetadata as any)?.model_id;
+    const modelId = (m.submissionMetadata as any)?.model_id
+      ?? agentModelMap.get(m.agentId);
     if (!modelId) continue;
     if (!matchesByModel[modelId]) matchesByModel[modelId] = [];
     matchesByModel[modelId].push(m);
@@ -242,7 +245,8 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
       // Best-performing model on this challenge
       const modelScores: Record<string, number[]> = {};
       for (const m of ms) {
-        const modelId = (m.submissionMetadata as any)?.model_id;
+        const modelId = (m.submissionMetadata as any)?.model_id
+          ?? agentModelMap.get(m.agentId);
         if (modelId && m.score !== null) {
           if (!modelScores[modelId]) modelScores[modelId] = [];
           modelScores[modelId].push(m.score);

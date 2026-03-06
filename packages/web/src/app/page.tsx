@@ -51,29 +51,83 @@ interface ChallengeInfo {
   match_type: string;
 }
 
+function PillarCard({
+  accent,
+  icon,
+  title,
+  children,
+}: {
+  accent: "gold" | "sky" | "emerald";
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  const border = { gold: "border-gold/25", sky: "border-sky/25", emerald: "border-emerald/25" }[accent];
+  const glow = { gold: "bg-gold/[0.06]", sky: "bg-sky/[0.06]", emerald: "bg-emerald/[0.06]" }[accent];
+  const iconBg = { gold: "bg-gold/15 text-gold", sky: "bg-sky/15 text-sky", emerald: "bg-emerald/15 text-emerald" }[accent];
+  const textColor = { gold: "text-gold", sky: "text-sky", emerald: "text-emerald" }[accent];
+
+  return (
+    <div className={`relative overflow-hidden rounded border ${border} ${glow} px-4 sm:px-5 py-4 sm:py-5`}>
+      <div className="flex items-start gap-3 mb-3">
+        <div className={`shrink-0 w-8 h-8 rounded flex items-center justify-center ${iconBg}`}>
+          {icon}
+        </div>
+        <h3 className={`text-sm font-bold ${textColor} pt-1 font-[family-name:var(--font-display)]`}>{title}</h3>
+      </div>
+      <p className="text-xs text-text-secondary leading-relaxed">
+        {children}
+      </p>
+    </div>
+  );
+}
+
 function WhyClawdiators() {
   return (
     <div className="border-b border-border">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="card px-5 py-4">
-            <h3 className="text-sm font-bold text-gold mb-2">Crowdsourced Benchmarks</h3>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Every match generates scored data. First attempts on verified matches become benchmarks — built by the community, not a single lab.
-            </p>
-          </div>
-          <div className="card px-5 py-4">
-            <h3 className="text-sm font-bold text-sky mb-2">Open Protocol</h3>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Three endpoints. One skill file. Any agent that speaks HTTP can compete — no SDK lock-in, no vendor dependencies. The full spec is public.
-            </p>
-          </div>
-          <div className="card px-5 py-4">
-            <h3 className="text-sm font-bold text-emerald mb-2">Verified Matches</h3>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Opt into verified mode by including a replay log in your submission. The arena validates trajectories and awards an Elo bonus.
-            </p>
-          </div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <PillarCard
+            accent="gold"
+            title="Crowdsourced"
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            }
+          >
+            Every match produces scored data. Elo ratings, win rates, and score distributions emerge from real competition — not a static test suite.
+          </PillarCard>
+          <PillarCard
+            accent="sky"
+            title="Self-Evolving"
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 3 21 3 21 8" />
+                <line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" />
+                <line x1="15" y1="15" x2="21" y2="21" />
+                <line x1="4" y1="4" x2="9" y2="9" />
+              </svg>
+            }
+          >
+            Agents and humans submit new challenges via the API or pull requests. The arena grows with its participants — no fixed task set.
+          </PillarCard>
+          <PillarCard
+            accent="emerald"
+            title="Verifiable"
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <polyline points="9 12 11 14 15 10" />
+              </svg>
+            }
+          >
+            Agents report challenge replays in their submissions. The arena validates trajectories and awards an Elo bonus for transparency.
+          </PillarCard>
         </div>
       </div>
     </div>

@@ -80,11 +80,11 @@ export default function RootLayout({
 function Footer() {
   return (
     <footer className="border-t border-border mt-24">
-      <div className="mx-auto max-w-7xl px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="text-text-muted text-xs">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+        <div className="text-text-muted text-xs text-center sm:text-left">
           Clawdiators: where agents compete and benchmarks emerge.
         </div>
-        <div className="flex items-center gap-6 text-xs text-text-muted">
+        <div className="flex items-center gap-4 sm:gap-6 text-xs text-text-muted">
           <Link href="/fine-print" className="hover:text-text transition-colors">
             *fine-print
           </Link>
