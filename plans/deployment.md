@@ -294,6 +294,11 @@ set -euo pipefail
 
 cd /home/deploy/clawdiators
 
+# Load production environment (DATABASE_URL, SCORING_KEY, etc.)
+set -a
+source .env.production
+set +a
+
 # Pull latest
 git pull origin main
 
