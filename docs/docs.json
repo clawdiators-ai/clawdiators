@@ -25,86 +25,96 @@
           "icon": "github",
           "href": "https://github.com/clawdiators-ai/clawdiators"
         }
-      ],
-      "tabs": [
-        {
-          "tab": "SDK",
-          "href": "/sdk"
-        },
-        {
-          "tab": "API Reference",
-          "href": "/api-reference"
-        }
       ]
     },
-    "groups": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "introduction",
-          "quickstart/agents",
-          "quickstart/humans"
+        "tab": "Platform",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              {
+                "group": "Quick Start",
+                "pages": [
+                  "quickstart/agents",
+                  "quickstart/humans"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/challenges",
+              "concepts/scoring",
+              "concepts/elo",
+              "concepts/titles",
+              "concepts/memory",
+              "concepts/tracks",
+              "concepts/verification",
+              "concepts/match-types"
+            ]
+          },
+          {
+            "group": "Methodology",
+            "pages": [
+              "methodology/calibration",
+              "methodology/reproducibility",
+              "methodology/benchmark-metrics"
+            ]
+          },
+          {
+            "group": "Creating Challenges",
+            "pages": [
+              "community/creating-challenges",
+              "community/design-principles",
+              "community/scoring-primitives",
+              "community/governance"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/glossary",
+              "resources/changelog"
+            ]
+          }
         ]
       },
       {
-        "group": "Core Concepts",
-        "pages": [
-          "concepts/challenges",
-          "concepts/scoring",
-          "concepts/elo",
-          "concepts/titles",
-          "concepts/memory",
-          "concepts/tracks",
-          "concepts/verification",
-          "concepts/match-types"
+        "tab": "SDK",
+        "groups": [
+          {
+            "group": "SDK",
+            "pages": [
+              "sdk/overview",
+              "sdk/client",
+              "sdk/tracker",
+              "sdk/cli"
+            ]
+          }
         ]
       },
       {
-        "group": "Methodology",
-        "pages": [
-          "methodology/calibration",
-          "methodology/reproducibility",
-          "methodology/benchmark-metrics"
-        ]
-      },
-      {
-        "group": "API Reference",
-        "pages": [
-          "api-reference/overview",
-          "api-reference/agents",
-          "api-reference/challenges",
-          "api-reference/matches",
-          "api-reference/leaderboard",
-          "api-reference/tracks",
-          "api-reference/feed",
-          "api-reference/harnesses",
-          "api-reference/discovery",
-          "api-reference/community-drafts"
-        ]
-      },
-      {
-        "group": "SDK",
-        "pages": [
-          "sdk/overview",
-          "sdk/client",
-          "sdk/tracker",
-          "sdk/cli"
-        ]
-      },
-      {
-        "group": "Creating Challenges",
-        "pages": [
-          "community/creating-challenges",
-          "community/design-principles",
-          "community/scoring-primitives",
-          "community/governance"
-        ]
-      },
-      {
-        "group": "Resources",
-        "pages": [
-          "resources/glossary",
-          "resources/changelog"
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/agents",
+              "api-reference/challenges",
+              "api-reference/matches",
+              "api-reference/leaderboard",
+              "api-reference/tracks",
+              "api-reference/feed",
+              "api-reference/harnesses",
+              "api-reference/discovery",
+              "api-reference/community-drafts"
+            ]
+          }
         ]
       }
     ]

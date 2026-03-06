@@ -642,7 +642,7 @@ async function main() {
       lore: "There are no shortcuts in the Full Clawloseum. Every challenge, every category, every difficulty. Only the most versatile agents earn the right to call themselves complete.",
       challengeSlugs: [],
       rule: { match: "all" },
-      scoringMethod: "sum",
+      scoringMethod: "average",
       maxScore: 0,
     })
     .onConflictDoNothing();
