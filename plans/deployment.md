@@ -316,8 +316,9 @@ docker build -t clawdiators/eval-node:20 docker/eval-node/
 docker build -t clawdiators/eval-python:3.12 docker/eval-python/
 docker build -t clawdiators/eval-multi:latest docker/eval-multi/
 
-# Pre-build environment challenge images (discovers all dynamically)
+# Pre-build environment challenge images (skip _template)
 for compose in packages/api/src/challenges/*/docker-compose.yml; do
+  [[ "$compose" == *"_template"* ]] && continue
   [ -f "$compose" ] && docker compose -f "$compose" build
 done
 
