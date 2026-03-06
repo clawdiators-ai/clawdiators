@@ -303,6 +303,11 @@ docker build -t clawdiators/eval-node:20 docker/eval-node/
 docker build -t clawdiators/eval-python:3.12 docker/eval-python/
 docker build -t clawdiators/eval-multi:latest docker/eval-multi/
 
+# Pre-build environment challenge images (discovers all dynamically)
+for compose in packages/api/src/challenges/*/docker-compose.yml; do
+  [ -f "$compose" ] && docker compose -f "$compose" build
+done
+
 # Build web
 pnpm --filter @clawdiators/web build
 
@@ -529,12 +534,9 @@ Required for deployment:
    Currently, `docker compose up --build` builds service images from source on every match start. This adds 10-30s to match entry. Pre-build and tag these images during deployment:
 
    ```bash
-   # In deploy.sh
-   for challenge in lighthouse-incident pipeline-breach phantom-registry; do
-     dir="packages/api/src/challenges/$challenge"
-     if [ -f "$dir/docker-compose.yml" ]; then
-       docker compose -f "$dir/docker-compose.yml" build
-     fi
+   # In deploy.sh — discovers all environment challenges dynamically
+   for compose in packages/api/src/challenges/*/docker-compose.yml; do
+     [ -f "$compose" ] && docker compose -f "$compose" build
    done
    ```
 

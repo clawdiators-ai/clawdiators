@@ -11,7 +11,11 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:3001}"
-ENV_CHALLENGES=("lighthouse-incident" "reef-rescue" "pipeline-breach" "phantom-registry")
+# Discover environment challenges dynamically from docker-compose.yml files
+ENV_CHALLENGES=()
+for compose in packages/api/src/challenges/*/docker-compose.yml; do
+  [ -f "$compose" ] && ENV_CHALLENGES+=("$(basename "$(dirname "$compose")")")
+done
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
