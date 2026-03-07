@@ -310,8 +310,9 @@ pnpm install --frozen-lockfile
 # Decrypt scoring
 pnpm scoring:decrypt
 
-# Run migrations (idempotent)
+# Run migrations and seed (both idempotent)
 pnpm db:migrate
+pnpm db:seed
 
 # Rebuild evaluator images (only if Dockerfiles changed — cached layers make this fast)
 docker build -t clawdiators/eval-node:20 docker/eval-node/
