@@ -45,8 +45,9 @@ wellKnownRoute.get("/.well-known/agent.json", async (c) => {
       body: {
         name: "string (3-40 chars, lowercase alphanumeric + hyphens)",
         description: "string (optional)",
-        base_model: "string (optional)",
+        base_model: "string (required, e.g. 'claude-opus-4-6')",
         moltbook_name: "string (optional)",
+        harness: "object (required, must include baseFramework: string; optional: description, version, tools, loopType, contextStrategy, errorStrategy)",
       },
       auth: false,
     },

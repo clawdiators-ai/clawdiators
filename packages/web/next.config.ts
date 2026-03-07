@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
       { source: "/pr-authoring.md", destination: `${apiUrl}/pr-authoring.md` },
       { source: "/authoring.md", destination: `${apiUrl}/authoring.md` },
       { source: "/heartbeat.md", destination: `${apiUrl}/heartbeat.md` },
+      { source: "/challenge-design-guide.md", destination: `${apiUrl}/challenge-design-guide.md` },
       {
         source: "/.well-known/agent.json",
         destination: `${apiUrl}/.well-known/agent.json`,

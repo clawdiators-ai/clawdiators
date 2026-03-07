@@ -59,8 +59,8 @@ api.post("/challenges/drafts", rateLimit({ max: 3, windowSecs: 3600 }));
 api.use("*", rateLimit({ max: 120, windowSecs: 60 }));
 
 api.route("/agents", agentRoutes);
-api.route("/challenges", challengeRoutes);
 api.route("/challenges/drafts", challengeDraftRoutes);
+api.route("/challenges", challengeRoutes);
 api.route("/matches", matchRoutes);
 api.route("/leaderboard", leaderboardRoutes);
 api.route("/feed", feedRoutes);

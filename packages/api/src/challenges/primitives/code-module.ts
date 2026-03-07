@@ -232,9 +232,10 @@ export function createCodeModule(spec: CommunitySpec, opts?: CreateCodeModuleOpt
           `console.log(JSON.stringify(files));`,
         ].join("\n");
 
-        const { stdout, exitCode } = await executeCodeInDocker(script, 10);
+        const { stdout, stderr, exitCode } = await executeCodeInDocker(script, 10);
         if (exitCode !== 0) {
-          throw new Error(`generateWorkspace failed with exit code ${exitCode}`);
+          const detail = (stderr || stdout || "").trim();
+          throw new Error(`generateWorkspace failed with exit code ${exitCode}: ${detail}`);
         }
 
         const lines = stdout.trim().split("\n");

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, mkdir, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EvalRuntime } from "@clawdiators/shared";
@@ -134,6 +134,9 @@ async function prepareWorkdir(
   }
 
   const dir = await mkdtemp(join(tmpdir(), "clawdiators-eval-"));
+  // mkdtemp creates dirs with 0700 — Docker containers run as nobody (uid 65534)
+  // and need read+execute access to the mounted workspace directory
+  await chmod(dir, 0o755);
 
   // Write submission files (may include subdirs)
   for (const [relPath, content] of Object.entries(submissionFiles)) {
@@ -363,7 +366,7 @@ function parseEvalOutput(
 export async function executeCodeInDocker(
   script: string,
   timeoutSecs: number = 10,
-): Promise<{ stdout: string; exitCode: number }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const dockerOk = await isDockerAvailable();
   if (!dockerOk) {
     if (process.env.NODE_ENV === "production") {
@@ -376,7 +379,7 @@ export async function executeCodeInDocker(
       "node",
       timeoutSecs,
     );
-    return { stdout: result.stdout, exitCode: result.exitCode };
+    return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
   }
 
   const image = RUNTIME_IMAGES.node;
@@ -391,7 +394,7 @@ export async function executeCodeInDocker(
       "node",
       timeoutSecs,
     );
-    return { stdout: result.stdout, exitCode: result.exitCode };
+    return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
   }
 
   const result = await evaluateInDocker(
@@ -400,7 +403,7 @@ export async function executeCodeInDocker(
     "node",
     timeoutSecs,
   );
-  return { stdout: result.stdout, exitCode: result.exitCode };
+  return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
 }
 
 /**
@@ -429,10 +432,11 @@ export async function generateDataInDocker(
     `console.log(JSON.stringify(result));`,
   ].join("\n");
 
-  const { stdout, exitCode } = await executeCodeInDocker(script, 10);
+  const { stdout, stderr, exitCode } = await executeCodeInDocker(script, 10);
 
   if (exitCode !== 0) {
-    throw new Error(`generateData failed with exit code ${exitCode}: ${stdout}`);
+    const detail = (stderr || stdout || "").trim();
+    throw new Error(`generateData failed with exit code ${exitCode}: ${detail}`);
   }
 
   const lines = stdout.trim().split("\n");
@@ -486,10 +490,11 @@ export async function scoreInDocker(
     `console.log(JSON.stringify(result));`,
   ].join("\n");
 
-  const { stdout, exitCode } = await executeCodeInDocker(script, 10);
+  const { stdout, stderr, exitCode } = await executeCodeInDocker(script, 10);
 
   if (exitCode !== 0) {
-    throw new Error(`score() failed with exit code ${exitCode}: ${stdout}`);
+    const detail = (stderr || stdout || "").trim();
+    throw new Error(`score() failed with exit code ${exitCode}: ${detail}`);
   }
 
   const lines = stdout.trim().split("\n");

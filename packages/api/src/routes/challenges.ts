@@ -7,7 +7,7 @@ import { getCache, setCache } from "../lib/route-cache.js";
 import { getChallenge } from "../challenges/registry.js";
 import { buildWorkspaceArchive, type ChallengeMdContext } from "../challenges/workspace.js";
 import { getChallengeAnalytics } from "../services/analytics.js";
-import { getAllowedImages } from "../challenges/primitives/validator.js";
+import { getAllowedImages, VALID_CATEGORIES, VALID_DIFFICULTIES, VALID_MATCH_TYPES, VALID_COLORS } from "../challenges/primitives/validator.js";
 import { SCORING_PRIMITIVES_METADATA } from "../challenges/primitives/scoring.js";
 import { DATA_GENERATORS_METADATA } from "../challenges/primitives/data-generator.js";
 
@@ -24,10 +24,11 @@ challengeRoutes.get("/primitives", (c) => {
   return envelope(c, {
     scoring_primitives: SCORING_PRIMITIVES_METADATA,
     data_generators: DATA_GENERATORS_METADATA,
-    valid_categories: ["calibration", "toolchain", "efficiency", "relay", "coding", "reasoning", "context", "memory", "endurance", "alignment", "multimodal", "cybersecurity", "optimization", "research"],
-    valid_difficulties: ["newcomer", "contender", "veteran", "legendary"],
-    valid_match_types: ["single", "multi-checkpoint", "long-running"],
-    valid_colors: ["emerald", "sky", "gold", "purple", "coral"],
+    valid_categories: [...VALID_CATEGORIES],
+    valid_difficulties: [...VALID_DIFFICULTIES],
+    valid_match_types: [...VALID_MATCH_TYPES],
+    valid_colors: [...VALID_COLORS],
+    note: "Categories evolve as the community grows. Propose new ones via challenge drafts or PRs.",
     gate_thresholds: {
       newcomer: { baseline_minimum: 0.6, anti_gaming_ceiling: 0.25 },
       contender: { baseline_minimum: 0.5, anti_gaming_ceiling: 0.25 },
@@ -36,6 +37,50 @@ challengeRoutes.get("/primitives", (c) => {
     },
   });
 });
+
+/** Generate a scaffold scorer.js that correctly maps each requested dimension. */
+function generateScorerScaffold(dimKeys: string[], dimensions: Array<{ weight: number }>): string {
+  const lines: string[] = [
+    "function score(input) {",
+    "  var sub = input.submission || {};",
+    "  var gt = input.groundTruth;",
+    "",
+    "  // TODO: Replace with real scoring logic for each dimension.",
+    "  // Gate bonus dimensions on correctness > 0 to prevent gaming.",
+  ];
+
+  // Generate a variable for each dimension with the right scoring pattern
+  for (let i = 0; i < dimKeys.length; i++) {
+    const key = dimKeys[i];
+    const maxPts = Math.round(dimensions[i].weight * 1000);
+    lines.push("");
+    if (key === "correctness") {
+      lines.push(`  var ${key} = sub.answer === gt.answer ? ${maxPts} : 0;`);
+    } else if (key === "speed") {
+      lines.push(`  var ${key} = 0;`);
+      lines.push(`  if (correctness > 0) {`);
+      lines.push(`    var elapsed = (new Date(input.submittedAt) - new Date(input.startedAt)) / 1000;`);
+      lines.push(`    ${key} = Math.max(0, Math.round(${maxPts} * (1 - elapsed / 300)));`);
+      lines.push(`  }`);
+    } else if (key === "methodology") {
+      lines.push(`  var ${key} = 0;`);
+      lines.push(`  if (correctness > 0 && sub.methodology && typeof sub.methodology === "string" && sub.methodology.length > 20) {`);
+      lines.push(`    ${key} = ${maxPts};`);
+      lines.push(`  }`);
+    } else {
+      lines.push(`  // TODO: Implement ${key} scoring (max ${maxPts} points)`);
+      lines.push(`  var ${key} = 0;`);
+    }
+  }
+
+  lines.push("");
+  lines.push("  var total = " + dimKeys.join(" + ") + ";");
+  lines.push("  return { breakdown: { " + dimKeys.map((k) => `${k}: ${k}`).join(", ") + ", total: total } };");
+  lines.push("}");
+  lines.push("module.exports = { score };");
+
+  return lines.join("\n");
+}
 
 // GET /challenges/scaffold — generate a valid starting spec
 challengeRoutes.get("/scaffold", (c) => {
@@ -113,25 +158,7 @@ challengeRoutes.get("/scaffold", (c) => {
         "}",
         "module.exports = { generateData };",
       ].join("\n"),
-      "scorer.js": [
-        "function score(input) {",
-        "  var sub = input.submission || {};",
-        "  var gt = input.groundTruth;",
-        "",
-        "  // TODO: Score each dimension. Gate bonus dimensions on correctness > 0.",
-        "  var correctness = sub.answer === gt.answer ? " + Math.round(dimensions[0].weight * 1000) + " : 0;",
-        "",
-        "  var speed = 0;",
-        "  if (correctness > 0) {",
-        "    var elapsed = (new Date(input.submittedAt) - new Date(input.startedAt)) / 1000;",
-        "    speed = Math.max(0, Math.round(" + Math.round(dimensions.length > 1 ? dimensions[1].weight * 1000 : 200) + " * (1 - elapsed / 300)));",
-        "  }",
-        "",
-        "  var total = correctness + speed;",
-        "  return { breakdown: { " + dimKeys.map((k, i) => i === 0 ? `${k}: correctness` : i === 1 ? `${k}: speed` : `${k}: 0`).join(", ") + ", total: total } };",
-        "}",
-        "module.exports = { score };",
-      ].join("\n"),
+      "scorer.js": generateScorerScaffold(dimKeys, dimensions),
     };
   }
 

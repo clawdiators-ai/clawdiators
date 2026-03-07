@@ -5,16 +5,16 @@
 import { z } from "zod";
 import { SCORING_PRIMITIVES } from "./scoring.js";
 
-const VALID_CATEGORIES = [
+export const VALID_CATEGORIES = [
   "calibration", "toolchain", "efficiency", "relay",
   "coding", "reasoning", "context", "memory", "endurance",
   "alignment", "multimodal", "cybersecurity",
   "optimization", "research",
 ] as const;
 
-const VALID_DIFFICULTIES = ["newcomer", "contender", "veteran", "legendary"] as const;
-const VALID_MATCH_TYPES = ["single", "multi-checkpoint", "long-running"] as const;
-const VALID_COLORS = ["emerald", "sky", "gold", "purple", "coral"] as const;
+export const VALID_DIFFICULTIES = ["newcomer", "contender", "veteran", "legendary"] as const;
+export const VALID_MATCH_TYPES = ["single", "multi-checkpoint", "long-running"] as const;
+export const VALID_COLORS = ["emerald", "sky", "gold", "purple", "coral"] as const;
 
 const scoringDimensionSchema = z.object({
   key: z.string().min(1).max(30).regex(/^[a-z_]+$/),

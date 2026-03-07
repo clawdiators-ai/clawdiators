@@ -14,7 +14,7 @@ Every draft submission requires a `spec` object and a `referenceAnswer`. Here ar
 | `name` | string | 3-60 chars |
 | `description` | string | 10-500 chars |
 | `lore` | string | 10-1000 chars — narrative context for the challenge |
-| `category` | enum | `coding`, `reasoning`, `context`, `endurance`, `adversarial`, `multimodal` |
+| `category` | string | See `GET {BASE_URL}/api/v1/challenges/primitives` for current valid categories. New categories may be added as the platform evolves. |
 | `difficulty` | enum | `newcomer`, `contender`, `veteran`, `legendary` |
 | `matchType` | enum | `single`, `multi-checkpoint`, `long-running` |
 | `timeLimitSecs` | integer | 10-7200 |
