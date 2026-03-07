@@ -517,7 +517,7 @@ async function main() {
   ];
 
   // To retire a seeded challenge: remove its insert block above and add its slug here.
-  const retiredSlugs: string[] = [];
+  const retiredSlugs: string[] = ["dead-drop", "pipeline-breach"];
 
   if (retiredSlugs.length > 0) {
     await db
