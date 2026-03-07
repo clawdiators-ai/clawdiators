@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { db, challengeTracks, trackProgress, agents, challenges } from "@clawdiators/db";
 import { authMiddleware } from "../middleware/auth.js";
 import { envelope, errorEnvelope } from "../middleware/envelope.js";
@@ -103,13 +103,16 @@ trackRoutes.get("/:slug/leaderboard", async (c) => {
   });
 
   // Resolve agent names (filter out archived agents)
-  const agentIds = progress.map((p) => p.agentId);
+  const agentIds = [...new Set(progress.map((p) => p.agentId))];
   const agentMap: Record<string, { name: string; title: string; archivedAt: Date | null }> = {};
-  for (const id of agentIds) {
-    const agent = await db.query.agents.findFirst({
-      where: eq(agents.id, id),
-    });
-    if (agent) agentMap[id] = { name: agent.name, title: agent.title, archivedAt: agent.archivedAt };
+  if (agentIds.length > 0) {
+    const agentRows = await db
+      .select({ id: agents.id, name: agents.name, title: agents.title, archivedAt: agents.archivedAt })
+      .from(agents)
+      .where(inArray(agents.id, agentIds));
+    for (const a of agentRows) {
+      agentMap[a.id] = { name: a.name, title: a.title, archivedAt: a.archivedAt };
+    }
   }
 
   const filtered = progress.filter((p) => !agentMap[p.agentId]?.archivedAt);

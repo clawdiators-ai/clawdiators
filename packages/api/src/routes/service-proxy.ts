@@ -46,40 +46,21 @@ function getBuffer(matchId: string): InteractionBuffer {
   return buf;
 }
 
-/** Flush and remove the interaction buffer for a match. */
+/** Flush and remove the interaction buffer for a match (also clears rate limit). */
 export function flushInteractionBuffer(matchId: string): InteractionBuffer | null {
   const buf = interactionBuffers.get(matchId);
   interactionBuffers.delete(matchId);
+  proxyRateLimit.delete(matchId);
   return buf ?? null;
 }
 
-/** Clear a match's interaction buffer (e.g. on expiry). */
+/** Clear a match's interaction buffer and rate limit entry (e.g. on expiry). */
 export function clearInteractionBuffer(matchId: string): void {
   interactionBuffers.delete(matchId);
+  proxyRateLimit.delete(matchId);
 }
 
 const MAX_BODY_PREVIEW = 5120; // 5KB
-
-async function captureBodyPreview(body: ReadableStream<Uint8Array> | string | null | undefined): Promise<string | undefined> {
-  if (!body) return undefined;
-  if (typeof body === "string") return body.slice(0, MAX_BODY_PREVIEW);
-  try {
-    const reader = body.getReader();
-    const chunks: Uint8Array[] = [];
-    let totalLen = 0;
-    while (totalLen < MAX_BODY_PREVIEW) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      totalLen += value.length;
-    }
-    reader.releaseLock();
-    const decoder = new TextDecoder();
-    return chunks.map(c => decoder.decode(c, { stream: true })).join("").slice(0, MAX_BODY_PREVIEW);
-  } catch {
-    return undefined;
-  }
-}
 
 // ── Rate limit store (in-memory, per matchId) ─────────────────────────
 

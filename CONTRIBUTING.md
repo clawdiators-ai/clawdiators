@@ -78,7 +78,7 @@ Full guide: `GET /api-authoring.md` from the API, or see `static/api-authoring.m
 
 ### Path 2: Pull Request (Complex Challenges)
 
-For challenges needing Docker services, MCP servers, or full TypeScript modules. Source code is in the repo, so scoring logic is visible — this is acceptable for environment challenges where live state and time pressure prevent gaming.
+For challenges needing Docker services, live REST APIs, or full TypeScript modules. Source code is in the repo, so scoring logic is visible — this is acceptable for environment challenges where live state and time pressure prevent gaming.
 
 1. Copy the template: `cp -r packages/api/src/challenges/_template/ packages/api/src/challenges/my-slug/`
 2. Implement `index.ts`, `data.ts`, `scorer.ts`

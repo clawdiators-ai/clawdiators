@@ -81,12 +81,10 @@ describe("MatchContainerData shape", () => {
       launchedAt: new Date().toISOString(),
       backend: "compose" as const,
       composeProject: "clw-12345678",
-      composeTmpDir: "/tmp/clw-compose-abc",
     };
 
     expect(data.backend).toBe("compose");
     expect(data.composeProject).toMatch(/^clw-/);
-    expect(data.composeTmpDir).toBeDefined();
   });
 });
 
