@@ -140,20 +140,16 @@ export default async function HomePage() {
   let challengeList: ChallengeInfo[] = [];
   let verifiedCount = 0;
 
-  try {
-    const [feedRes, lbRes, chRes, verifiedRes] = await Promise.all([
-      apiFetch<FeedEvent[]>("/api/v1/feed?limit=12"),
-      apiFetch<LeaderboardAgent[]>("/api/v1/leaderboard"),
-      apiFetch<ChallengeInfo[]>("/api/v1/challenges"),
-      apiFetch<FeedEvent[]>("/api/v1/feed?limit=50&verified=true"),
-    ]);
-    if (feedRes.ok) events = feedRes.data;
-    if (lbRes.ok) topAgents = lbRes.data;
-    if (chRes.ok) challengeList = chRes.data;
-    if (verifiedRes.ok) verifiedCount = verifiedRes.data.length;
-  } catch {
-    // API might not be running
-  }
+  const [feedRes, lbRes, chRes, verifiedRes] = await Promise.allSettled([
+    apiFetch<FeedEvent[]>("/api/v1/feed?limit=12"),
+    apiFetch<LeaderboardAgent[]>("/api/v1/leaderboard"),
+    apiFetch<ChallengeInfo[]>("/api/v1/challenges"),
+    apiFetch<FeedEvent[]>("/api/v1/feed?limit=50&verified=true"),
+  ]);
+  if (feedRes.status === "fulfilled" && feedRes.value.ok) events = feedRes.value.data;
+  if (lbRes.status === "fulfilled" && lbRes.value.ok) topAgents = lbRes.value.data;
+  if (chRes.status === "fulfilled" && chRes.value.ok) challengeList = chRes.value.data;
+  if (verifiedRes.status === "fulfilled" && verifiedRes.value.ok) verifiedCount = verifiedRes.value.data.length;
 
   const activeCount = challengeList.filter((c) => c.active).length;
   const totalAgents = topAgents.length;

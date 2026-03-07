@@ -14,5 +14,12 @@ export async function apiFetch<T>(
       ...options?.headers,
     },
   });
-  return res.json();
+  if (!res.ok) {
+    return { ok: false, data: {} as T, flavour: "" };
+  }
+  try {
+    return await res.json();
+  } catch {
+    return { ok: false, data: {} as T, flavour: "" };
+  }
 }

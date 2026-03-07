@@ -163,7 +163,7 @@ async function dockerStart(
 
 function dockerStop(containerNames: string[]): void {
   for (const name of containerNames) {
-    execFileAsync("docker", ["rm", "-f", name], { timeout: 10_000 }).catch(() => {});
+    execFileAsync("docker", ["rm", "-f", name], { timeout: 10_000 }).catch((err) => console.error("Failed to stop container:", name, err.message));
   }
 }
 
@@ -275,7 +275,7 @@ async function flyStop(machineIds: string[]): Promise<void> {
   if (!appName) return;
 
   for (const id of machineIds) {
-    flyRequest("DELETE", `/v1/apps/${appName}/machines/${id}?force=true`).catch(() => {});
+    flyRequest("DELETE", `/v1/apps/${appName}/machines/${id}?force=true`).catch((err) => console.error("Failed to stop Fly machine:", id, err.message));
   }
 }
 
@@ -381,7 +381,7 @@ async function composeUp(
 function composeDown(project: string): void {
   execFileAsync("docker", [
     "compose", "-p", project, "down", "-v", "--remove-orphans",
-  ], { timeout: 30_000 }).catch(() => {});
+  ], { timeout: 30_000 }).catch((err) => console.error("Compose down failed:", project, err.message));
 }
 
 // ── Public API ────────────────────────────────────────────────────────
@@ -487,7 +487,7 @@ export function stopMatchContainers(data: MatchContainerData): void {
 
     // Remove per-match network (best-effort)
     if (data.networkName) {
-      execFileAsync("docker", ["network", "rm", data.networkName], { timeout: 10_000 }).catch(() => {});
+      execFileAsync("docker", ["network", "rm", data.networkName], { timeout: 10_000 }).catch((err) => console.error("Network removal failed:", data.networkName, err.message));
     }
   }
 }

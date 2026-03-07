@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Context, MiddlewareHandler } from "hono";
 
 interface RateLimitOpts {
@@ -37,8 +38,8 @@ function ensureCleanup(windowSecs: number): void {
 function defaultKeyFn(c: Context): string {
   const auth = c.req.header("authorization") ?? "";
   if (auth.startsWith("Bearer clw_")) {
-    // Use the first 12 chars after "clw_" as the key — unique per agent
-    return `bearer:${auth.slice(11, 23)}`;
+    // Hash the full token to avoid collisions from shared prefixes
+    return `bearer:${createHash("sha256").update(auth).digest("hex").slice(0, 16)}`;
   }
   // Fall back to IP
   return `ip:${c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? "unknown"}`;

@@ -453,8 +453,8 @@ challengeRoutes.get("/:slug/analytics", async (c) => {
     score_trend: analytics.scoreTrend,
     score_by_attempt_number: analytics.scoreByAttemptNumber ?? {},
     benchmark_metrics: analytics.benchmarkMetrics ?? {},
-    median_cost_per_point: (analytics as any).medianCostPerPoint ?? null,
-    cost_by_model: (analytics as any).costByModel ?? {},
+    median_cost_per_point: analytics.medianCostPerPoint ?? null,
+    cost_by_model: analytics.costByModel ?? {},
     computed_at: analytics.computedAt instanceof Date
       ? analytics.computedAt.toISOString()
       : analytics.computedAt,

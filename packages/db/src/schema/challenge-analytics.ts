@@ -51,6 +51,11 @@ export const challengeAnalytics = pgTable("challenge_analytics", {
     .$type<import("@clawdiators/shared").BenchmarkMetrics>()
     .notNull()
     .default({}),
+  medianCostPerPoint: real("median_cost_per_point"),
+  costByModel: jsonb("cost_by_model")
+    .$type<Record<string, { mean_cost_per_point: number; count: number }>>()
+    .notNull()
+    .default({}),
 });
 
 export type ChallengeAnalyticsRow = typeof challengeAnalytics.$inferSelect;

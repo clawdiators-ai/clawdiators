@@ -499,8 +499,8 @@ export async function scoreInDocker(
       if (parsed && typeof parsed === "object" && parsed.breakdown) {
         // Validate dimension scores
         for (const [key, value] of Object.entries(parsed.breakdown)) {
-          if (typeof value !== "number" || isNaN(value as number)) {
-            throw new Error(`score() breakdown.${key} must be a number`);
+          if (typeof value !== "number" || !isFinite(value as number) || (value as number) < 0) {
+            throw new Error(`score() breakdown.${key} must be a finite non-negative number`);
           }
         }
         // Ensure total exists

@@ -66,105 +66,116 @@ matchRoutes.post(
       return errorEnvelope(c, "Challenge module not implemented", 501, "This trial is still being forged in the arena.");
     }
 
-    // Check for existing active match
-    const existingActive = await db.query.matches.findFirst({
-      where: and(
-        eq(matches.agentId, agent.id),
-        eq(matches.status, "active"),
-      ),
-    });
-    if (existingActive) {
-      // Check if expired
-      if (new Date() > existingActive.expiresAt) {
-        await expireMatch(existingActive.id);
-      } else {
-        // Check if the existing match is for a different challenge
-        if (existingActive.challengeId !== challenge.id) {
-          const existingChallenge = await db.query.challenges.findFirst({
-            where: eq(challenges.id, existingActive.challengeId),
-          });
-          return errorEnvelope(
-            c,
-            `You have an active match for "${existingChallenge?.slug ?? "another challenge"}". Complete or wait for it to expire before entering a different challenge.`,
-            409,
-            "One bout at a time, gladiator. Finish your current match before entering a new arena.",
-          );
+    // Check for existing active match + create new match atomically
+    const txResult = await db.transaction(async (tx) => {
+      const existingActive = await tx.query.matches.findFirst({
+        where: and(
+          eq(matches.agentId, agent.id),
+          eq(matches.status, "active"),
+        ),
+      });
+      if (existingActive) {
+        // Check if expired
+        if (new Date() > existingActive.expiresAt) {
+          // Expire inline within this transaction
+          await tx.update(matches).set({ status: "expired", result: "draw", eloChange: 0, completedAt: new Date() }).where(eq(matches.id, existingActive.id));
+        } else {
+          return { type: "existing" as const, existingActive };
         }
+      }
 
-        // Look up the challenge for the *existing* match, not the requested one
+      // Generate match
+      const seed = Math.floor(Math.random() * 2147483647);
+      const data = await mod.generateData(seed, challenge.config);
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + challenge.timeLimitSecs * 1000);
+
+      // Compute attempt number (count previous completed matches for this agent+challenge)
+      const [{ count: previousCompleted }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(matches)
+        .where(
+          and(
+            eq(matches.agentId, agent.id),
+            eq(matches.challengeId, challenge.id),
+            eq(matches.status, "completed"),
+          ),
+        );
+      const attemptNumber = previousCompleted + 1;
+
+      const [match] = await tx
+        .insert(matches)
+        .values({
+          challengeId: challenge.id,
+          agentId: agent.id,
+          seed,
+          status: "active",
+          objective: data.objective,
+          startedAt: now,
+          expiresAt,
+          attemptNumber,
+          memoryless,
+          verified: false,
+        })
+        .returning();
+
+      return { type: "created" as const, match, seed, data, now, expiresAt, attemptNumber };
+    });
+
+    if (txResult.type === "existing") {
+      const existingActive = txResult.existingActive;
+      // Check if the existing match is for a different challenge
+      if (existingActive.challengeId !== challenge.id) {
         const existingChallenge = await db.query.challenges.findFirst({
           where: eq(challenges.id, existingActive.challengeId),
         });
-        const existingMod = existingChallenge ? getChallenge(existingChallenge.slug) : null;
-        const existingChallengeMd = existingMod?.workspaceSpec?.challengeMd
-          ? injectChallengeMdContext(existingMod.workspaceSpec.challengeMd, {
-              seed: existingActive.seed,
-              attemptNumber: existingActive.attemptNumber,
-              verified: existingActive.verified,
-              memoryless: existingActive.memoryless,
-              constraints: existingChallenge?.constraints as Record<string, unknown> | null ?? null,
-              matchId: existingActive.id,
-              agentHarness: (agent.harness as HarnessInfo | null) ?? null,
-            })
-          : null;
-        const existingWorkspaceUrl = `/api/v1/challenges/${existingChallenge?.slug ?? challenge.slug}/workspace?seed=${existingActive.seed}`;
-        return envelope(c, {
-          match_id: existingActive.id,
-          status: "active",
-          objective: existingActive.objective,
-          time_limit_secs: existingChallenge?.timeLimitSecs ?? challenge.timeLimitSecs,
-          expires_at: existingActive.expiresAt,
-          match_type: existingChallenge?.matchType ?? challenge.matchType,
-          workspace_url: existingWorkspaceUrl,
-          challenge_md: existingChallengeMd,
-          submission_spec: existingMod?.submissionSpec ?? null,
-          submit_url: `/api/v1/matches/${existingActive.id}/submit`,
-          attempt_number: existingActive.attemptNumber,
-          memoryless: existingActive.memoryless,
-          verified: existingActive.verified,
-          challenge: existingChallenge ? {
-            slug: existingChallenge.slug,
-          } : undefined,
-          note: `You already have an active match for "${existingChallenge?.slug ?? "unknown"}". Complete or wait for it to expire.`,
-        }, 200, "Your current bout awaits, gladiator. Do not keep the crowd waiting.");
+        return errorEnvelope(
+          c,
+          `You have an active match for "${existingChallenge?.slug ?? "another challenge"}". Complete or wait for it to expire before entering a different challenge.`,
+          409,
+          "One bout at a time, gladiator. Finish your current match before entering a new arena.",
+        );
       }
+
+      // Look up the challenge for the *existing* match, not the requested one
+      const existingChallenge = await db.query.challenges.findFirst({
+        where: eq(challenges.id, existingActive.challengeId),
+      });
+      const existingMod = existingChallenge ? getChallenge(existingChallenge.slug) : null;
+      const existingChallengeMd = existingMod?.workspaceSpec?.challengeMd
+        ? injectChallengeMdContext(existingMod.workspaceSpec.challengeMd, {
+            seed: existingActive.seed,
+            attemptNumber: existingActive.attemptNumber,
+            verified: existingActive.verified,
+            memoryless: existingActive.memoryless,
+            constraints: existingChallenge?.constraints as Record<string, unknown> | null ?? null,
+            matchId: existingActive.id,
+            agentHarness: (agent.harness as HarnessInfo | null) ?? null,
+          })
+        : null;
+      const existingWorkspaceUrl = `/api/v1/challenges/${existingChallenge?.slug ?? challenge.slug}/workspace?seed=${existingActive.seed}`;
+      return envelope(c, {
+        match_id: existingActive.id,
+        status: "active",
+        objective: existingActive.objective,
+        time_limit_secs: existingChallenge?.timeLimitSecs ?? challenge.timeLimitSecs,
+        expires_at: existingActive.expiresAt,
+        match_type: existingChallenge?.matchType ?? challenge.matchType,
+        workspace_url: existingWorkspaceUrl,
+        challenge_md: existingChallengeMd,
+        submission_spec: existingMod?.submissionSpec ?? null,
+        submit_url: `/api/v1/matches/${existingActive.id}/submit`,
+        attempt_number: existingActive.attemptNumber,
+        memoryless: existingActive.memoryless,
+        verified: existingActive.verified,
+        challenge: existingChallenge ? {
+          slug: existingChallenge.slug,
+        } : undefined,
+        note: `You already have an active match for "${existingChallenge?.slug ?? "unknown"}". Complete or wait for it to expire.`,
+      }, 200, "Your current bout awaits, gladiator. Do not keep the crowd waiting.");
     }
 
-    // Generate match
-    const seed = Math.floor(Math.random() * 2147483647);
-
-    const data = await mod.generateData(seed, challenge.config);
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + challenge.timeLimitSecs * 1000);
-
-    // Compute attempt number (count previous completed matches for this agent+challenge)
-    const [{ count: previousCompleted }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(matches)
-      .where(
-        and(
-          eq(matches.agentId, agent.id),
-          eq(matches.challengeId, challenge.id),
-          eq(matches.status, "completed"),
-        ),
-      );
-    const attemptNumber = previousCompleted + 1;
-
-    const [match] = await db
-      .insert(matches)
-      .values({
-        challengeId: challenge.id,
-        agentId: agent.id,
-        seed,
-        status: "active",
-        objective: data.objective,
-        startedAt: now,
-        expiresAt,
-        attemptNumber,
-        memoryless,
-        verified: false,
-      })
-      .returning();
+    const { match, seed, data, now, expiresAt, attemptNumber } = txResult;
 
     const extraUrls: Record<string, string> = {};
     if (challenge.matchType === "multi-checkpoint") {
@@ -305,6 +316,11 @@ matchRoutes.post(
       if (match.status !== "expired") {
         await expireMatch(matchId);
       }
+      // Clean up environment containers and in-memory buffers
+      const expiredContainerData = (match as any).serviceData as MatchContainerData | null;
+      if (expiredContainerData) {
+        stopMatchContainers(expiredContainerData);
+      }
       clearInteractionBuffer(matchId);
       return errorEnvelope(c, "Match has expired", 410, "The sands of time have run out, gladiator.");
     }
@@ -437,141 +453,159 @@ matchRoutes.post(
     // Determine result (solo calibration)
     const result = scoreToResult(breakdown.total);
 
-    // IRT-Elo: use challenge difficulty as opponent rating
-    const challengeDifficulty = (challenge.calibratedDifficulty ?? challenge.difficulty) as string;
-    const opponentElo = DIFFICULTY_ELO[challengeDifficulty] ?? ELO_DEFAULT;
-    const eloResult = calculateElo(
-      agent.elo,
-      opponentElo,
-      result,
-      agent.matchCount,
-    );
+    // Wrap Elo calculation + all DB updates in a transaction to prevent stale-read races
+    const txOut = await db.transaction(async (tx) => {
+      // Re-read agent inside transaction for fresh Elo
+      const freshAgent = await tx.query.agents.findFirst({ where: eq(agents.id, agent.id) });
+      if (!freshAgent) throw new Error("Agent not found during submission");
 
-    // Apply Elo bonus for verified wins (trajectory submitted and valid)
-    // Benchmark grade (verified + first attempt): 1.2x
-    // Verified only: 1.1x
-    let eloChange = eloResult.change;
-    if (isVerified && eloResult.change > 0) {
-      const isBenchmark = match.attemptNumber === 1;
-      const bonus = isBenchmark ? BENCHMARK_ELO_BONUS : VERIFIED_ELO_BONUS;
-      eloChange = Math.round(eloResult.change * bonus);
-    }
-
-    // Generate flavour text (use bonus-adjusted eloChange for consistency with stored value)
-    const flavourText = generateFlavourText(
-      result,
-      agent.name,
-      breakdown.total,
-      eloChange,
-      match.seed,
-    );
-
-    // Apply verified Elo bonus to final rating if applicable
-    const finalEloAfter = eloChange !== eloResult.change
-      ? Math.max(ELO_FLOOR, agent.elo + eloChange)
-      : eloResult.newRating;
-
-    // Merge interaction log into serviceData for GET /matches/:id
-    let updatedServiceData = match.serviceData as Record<string, unknown> | null;
-    if (interactionLog && interactionLog.interactions.length) {
-      updatedServiceData = {
-        ...(updatedServiceData ?? {}),
-        serviceInteractions: interactionLog.interactions,
-      };
-    }
-
-    // Update match
-    await db
-      .update(matches)
-      .set({
-        status: "completed",
+      // IRT-Elo: use challenge difficulty as opponent rating
+      const challengeDifficulty = (challenge.calibratedDifficulty ?? challenge.difficulty) as string;
+      const opponentElo = DIFFICULTY_ELO[challengeDifficulty] ?? ELO_DEFAULT;
+      const eloResult = calculateElo(
+        freshAgent.elo,
+        opponentElo,
         result,
-        submission: answer,
-        submittedAt: now,
-        score: breakdown.total,
-        scoreBreakdown: breakdown,
-        eloBefore: agent.elo,
-        eloAfter: finalEloAfter,
+        freshAgent.matchCount,
+      );
+
+      // Apply Elo bonus for verified wins (trajectory submitted and valid)
+      // Benchmark grade (verified + first attempt): 1.2x
+      // Verified only: 1.1x
+      let eloChange = eloResult.change;
+      if (isVerified && eloResult.change > 0) {
+        const isBenchmark = match.attemptNumber === 1;
+        const bonus = isBenchmark ? BENCHMARK_ELO_BONUS : VERIFIED_ELO_BONUS;
+        eloChange = Math.round(eloResult.change * bonus);
+      }
+
+      // Generate flavour text (use bonus-adjusted eloChange for consistency with stored value)
+      const flavourText = generateFlavourText(
+        result,
+        freshAgent.name,
+        breakdown.total,
         eloChange,
-        flavourText,
-        completedAt: now,
-        evaluationLog,
-        submissionMetadata: metadata ?? null,
-        harnessId: metadata?.harness_id ?? null,
-        verified: isVerified,
-        apiCallLog,
-        ...(updatedServiceData ? { serviceData: updatedServiceData } : {}),
-      })
-      .where(eq(matches.id, matchId));
+        match.seed,
+      );
 
-    // Update agent stats
-    const newMatchCount = agent.matchCount + 1;
-    const newWinCount = agent.winCount + (result === "win" ? 1 : 0);
-    const newDrawCount = agent.drawCount + (result === "draw" ? 1 : 0);
-    const newLossCount = agent.lossCount + (result === "loss" ? 1 : 0);
+      // Apply verified Elo bonus to final rating if applicable
+      const finalEloAfter = eloChange !== eloResult.change
+        ? Math.max(ELO_FLOOR, freshAgent.elo + eloChange)
+        : eloResult.newRating;
 
-    // Streak tracking
-    let newStreak = agent.currentStreak;
-    if (result === "win") {
-      newStreak = newStreak > 0 ? newStreak + 1 : 1;
-    } else if (result === "loss") {
-      newStreak = newStreak < 0 ? newStreak - 1 : -1;
-    } else {
-      newStreak = 0;
-    }
-    const newBestStreak = Math.max(agent.bestStreak, newStreak);
+      // Merge interaction log into serviceData for GET /matches/:id
+      let updatedServiceData = match.serviceData as Record<string, unknown> | null;
+      if (interactionLog && interactionLog.interactions.length) {
+        updatedServiceData = {
+          ...(updatedServiceData ?? {}),
+          serviceInteractions: interactionLog.interactions,
+        };
+      }
 
-    // Elo history
-    const eloHistory = [
-      ...agent.eloHistory,
-      {
-        ts: now.toISOString(),
-        elo: finalEloAfter,
-        matchId: match.id,
-      },
-    ];
+      // Update match
+      await tx
+        .update(matches)
+        .set({
+          status: "completed",
+          result,
+          submission: answer,
+          submittedAt: now,
+          score: breakdown.total,
+          scoreBreakdown: breakdown,
+          eloBefore: freshAgent.elo,
+          eloAfter: finalEloAfter,
+          eloChange,
+          flavourText,
+          completedAt: now,
+          evaluationLog,
+          submissionMetadata: metadata ?? null,
+          harnessId: metadata?.harness_id ?? null,
+          verified: isVerified,
+          apiCallLog,
+          ...(updatedServiceData ? { serviceData: updatedServiceData } : {}),
+        })
+        .where(eq(matches.id, matchId));
 
-    // Compute new title
-    const agentStats = {
-      matchCount: newMatchCount,
-      winCount: newWinCount,
-      elo: finalEloAfter,
-      bestStreak: newBestStreak,
-    };
-    const newTitle = computeTitle(agentStats);
-    const allTitles = computeAllTitles(agentStats);
+      // Update agent stats
+      const newMatchCount = freshAgent.matchCount + 1;
+      const newWinCount = freshAgent.winCount + (result === "win" ? 1 : 0);
+      const newDrawCount = freshAgent.drawCount + (result === "draw" ? 1 : 0);
+      const newLossCount = freshAgent.lossCount + (result === "loss" ? 1 : 0);
 
-    // Update category Elo
-    const prevCategoryElo = (agent.categoryElo ?? {}) as Record<string, number>;
-    const catKey = challenge.category;
-    const catEloBefore = prevCategoryElo[catKey] ?? ELO_DEFAULT;
-    const catEloResult = calculateElo(catEloBefore, opponentElo, result, agent.matchCount);
-    const updatedCategoryElo = { ...prevCategoryElo, [catKey]: catEloResult.newRating };
+      // Streak tracking
+      let newStreak = freshAgent.currentStreak;
+      if (result === "win") {
+        newStreak = newStreak > 0 ? newStreak + 1 : 1;
+      } else if (result === "loss") {
+        newStreak = newStreak < 0 ? newStreak - 1 : -1;
+      } else {
+        newStreak = 0;
+      }
+      const newBestStreak = Math.max(freshAgent.bestStreak, newStreak);
 
-    await db
-      .update(agents)
-      .set({
-        elo: finalEloAfter,
-        categoryElo: updatedCategoryElo,
+      // Elo history
+      const eloHistory = [
+        ...freshAgent.eloHistory,
+        {
+          ts: now.toISOString(),
+          elo: finalEloAfter,
+          matchId: match.id,
+        },
+      ];
+
+      // Compute new title
+      const agentStats = {
         matchCount: newMatchCount,
         winCount: newWinCount,
-        drawCount: newDrawCount,
-        lossCount: newLossCount,
-        currentStreak: newStreak,
+        elo: finalEloAfter,
         bestStreak: newBestStreak,
-        eloHistory,
-        title: newTitle,
-        titles: allTitles,
-        updatedAt: now,
-      })
-      .where(eq(agents.id, agent.id));
+      };
+      const newTitle = computeTitle(agentStats);
+      const allTitles = computeAllTitles(agentStats);
 
-    // Increment calibration sample size and recalibrate every 20 submissions
-    const newSampleSize = (challenge.calibrationSampleSize ?? 0) + 1;
-    await db
-      .update(challenges)
-      .set({ calibrationSampleSize: newSampleSize })
-      .where(eq(challenges.id, challenge.id));
+      // Update category Elo
+      const prevCategoryElo = (freshAgent.categoryElo ?? {}) as Record<string, number>;
+      const catKey = challenge.category;
+      const catEloBefore = prevCategoryElo[catKey] ?? ELO_DEFAULT;
+      const catEloResult = calculateElo(catEloBefore, opponentElo, result, freshAgent.matchCount);
+      const updatedCategoryElo = { ...prevCategoryElo, [catKey]: catEloResult.newRating };
+
+      await tx
+        .update(agents)
+        .set({
+          elo: finalEloAfter,
+          categoryElo: updatedCategoryElo,
+          matchCount: newMatchCount,
+          winCount: newWinCount,
+          drawCount: newDrawCount,
+          lossCount: newLossCount,
+          currentStreak: newStreak,
+          bestStreak: newBestStreak,
+          eloHistory,
+          title: newTitle,
+          titles: allTitles,
+          updatedAt: now,
+        })
+        .where(eq(agents.id, agent.id));
+
+      // Increment calibration sample size
+      const newSampleSize = (challenge.calibrationSampleSize ?? 0) + 1;
+      await tx
+        .update(challenges)
+        .set({ calibrationSampleSize: newSampleSize })
+        .where(eq(challenges.id, challenge.id));
+
+      return { opponentElo, eloChange, flavourText, finalEloAfter, newTitle, newSampleSize };
+    });
+
+    const { opponentElo, eloChange, flavourText, finalEloAfter, newTitle, newSampleSize } = txOut;
+
+    // Recalibrate outside transaction (best-effort, doesn't need atomicity)
+    if (newSampleSize % 20 === 0) {
+      recalibrateChallenge(challenge.id).catch(() => {
+        // Best-effort calibration
+      });
+    }
 
     if (newSampleSize % 20 === 0) {
       recalibrateChallenge(challenge.id).catch(() => {

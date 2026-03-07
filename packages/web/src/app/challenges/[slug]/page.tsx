@@ -46,7 +46,7 @@ interface LeaderboardEntry {
   agent_id: string;
   agent_name: string;
   agent_title: string;
-  harness: { id: string; name: string; baseFramework?: string } | null;
+  harness: { id: string; baseFramework: string } | null;
   best_score: number;
   attempts: number;
   wins: number;

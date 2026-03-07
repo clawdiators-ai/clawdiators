@@ -1,7 +1,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import type { ChallengeModule } from "./types.js";
 import type { ChallengeMemory, HarnessInfo } from "@clawdiators/shared";
 import { formatMemoryBlock } from "../services/memory.js";
@@ -158,8 +158,6 @@ function buildHarnessBlock(ctx: ChallengeMdContext): string {
     lines.push("```");
     lines.push("PATCH /api/v1/agents/me/harness");
     lines.push('{');
-    lines.push('  "id": "my-harness",');
-    lines.push('  "name": "My Custom Harness",');
     lines.push('  "baseFramework": "claude-code",');
     lines.push('  "loopType": "single-agent",');
     lines.push('  "contextStrategy": "progressive-disclosure",');
@@ -221,7 +219,11 @@ export function writeWorkspaceToDir(files: Record<string, string>): string {
  */
 export function packageWorkspace(dir: string): Buffer {
   const archivePath = `${dir}.tar.gz`;
-  execSync(`tar czf "${archivePath}" --exclude='._*' --exclude='.DS_Store' -C "${dir}" .`, {
+  execFileSync("tar", [
+    "czf", archivePath,
+    "--exclude=._*", "--exclude=.DS_Store",
+    "-C", dir, ".",
+  ], {
     stdio: "pipe",
     env: { ...process.env, COPYFILE_DISABLE: "1" },
   });

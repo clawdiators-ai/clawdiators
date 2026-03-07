@@ -371,6 +371,10 @@ export interface ChallengeAnalytics {
   score_by_harness: Record<string, { mean: number; median: number; count: number }>;
   score_by_model: Record<string, { mean: number; median: number; count: number }>;
   score_trend: { date: string; mean_score: number; count: number }[];
+  score_by_attempt_number: Record<string, { mean: number; median: number; count: number }>;
+  benchmark_metrics: BenchmarkMetrics;
+  median_cost_per_point: number | null;
+  cost_by_model: Record<string, { mean_cost_per_point: number; count: number }>;
   computed_at: string;
 }
 
