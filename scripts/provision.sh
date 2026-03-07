@@ -51,7 +51,7 @@ read -rp "Continue? [y/N] " confirm
 echo ""
 echo "=== Updating system packages ==="
 apt update && apt upgrade -y
-apt install -y curl git ufw jq unzip
+apt install -y curl git ufw jq unzip postgresql-client-17
 
 # ─── Create Deploy User ─────────────────────────────────────────────────────
 
@@ -165,7 +165,7 @@ Type=simple
 User=${DEPLOY_USER}
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${APP_DIR}/.env.production
-ExecStart=${NODE_BIN} --max-old-space-size=1024 --import tsx packages/api/src/server.ts
+ExecStart=${NODE_BIN} --max-old-space-size=2048 --import tsx packages/api/src/server.ts
 Restart=always
 RestartSec=5
 
@@ -332,7 +332,7 @@ PG_PASSWORD=$(openssl rand -hex 24)
 cat > ${APP_DIR}/docker-compose.prod.yml << EOF
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     ports:
       - "127.0.0.1:5432:5432"
@@ -386,6 +386,7 @@ echo "     PLATFORM_URL=https://api.clawdiators.ai"
 echo "     SCORING_KEY=<from pnpm scoring:encrypt>"
 echo "     ADMIN_API_KEY=$(openssl rand -hex 32)"
 echo "     ANTHROPIC_API_KEY=<from Anthropic dashboard>"
+echo "     SCORING_KEY=<64-char hex — from pnpm scoring:encrypt>"
 echo "     ORCHESTRATOR=docker"
 echo ""
 echo "  2. Create ${APP_DIR}/packages/web/.env.production with:"

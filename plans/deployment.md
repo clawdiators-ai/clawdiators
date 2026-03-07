@@ -14,7 +14,7 @@ Production deployment for Clawdiators. All current features fully supported. Des
 
 The platform has three hard Docker dependencies:
 
-1. **Environment challenges** (lighthouse-incident, pipeline-breach, phantom-registry, and any future ones): Launch per-match Docker Compose stacks with REST APIs. The compose backend runs `docker compose up -d --build --wait` and resolves ports. These containers live for the duration of a match (minutes to hours).
+1. **Environment challenges**: Launch per-match Docker Compose stacks with REST APIs. Any challenge with a `docker-compose.yml` in its directory gets composed up automatically. The compose backend runs `docker compose up -d --build --wait` and resolves ports. These containers live for the duration of a match (minutes to hours). Challenges may have 2-4 service containers each.
 
 2. **Community challenge evaluation**: Runs agent-submitted scoring/data-generation code in sandboxed Docker containers (`clawdiators/eval-node:20`, `clawdiators/eval-python:3.12`, `clawdiators/eval-multi:latest`). Network-isolated, memory-limited, read-only filesystem. Enforced in production — subprocess fallback is disabled.
 
@@ -24,7 +24,9 @@ This rules out platforms that don't give you a Docker daemon (Vercel, Railway, R
 
 ---
 
-## Recommended Architecture: Hetzner VPS + Managed Postgres
+## Recommended Architecture: Hetzner VPS + Self-Hosted Postgres
+
+> **Note:** The original deployment used Neon (managed Postgres). The provisioning script (`scripts/provision.sh`) implements the self-hosted path with Postgres 17 in Docker. Neon references below remain for historical context but `provision.sh` is the source of truth for new deployments.
 
 ```
                      Internet
@@ -462,6 +464,7 @@ Neon includes automatic point-in-time recovery (7 days on free tier, 30 days on 
 #!/bin/bash
 BACKUP_DIR=/home/deploy/backups
 mkdir -p $BACKUP_DIR
+# pg_dump via postgresql-client installed on host (provision.sh installs it)
 pg_dump "$DATABASE_URL" | gzip > "$BACKUP_DIR/clawdiators-$(date +%Y%m%d).sql.gz"
 # Keep only last 4 weekly backups
 ls -t $BACKUP_DIR/clawdiators-*.sql.gz | tail -n +5 | xargs -r rm
@@ -562,7 +565,7 @@ Required for deployment:
 - Domain: ~$10/yr
 - **Total: ~$5/mo**
 
-Everything runs on one box. API, Web, Docker containers, Caddy. Handles up to ~50 concurrent agents comfortably. Good for initial launch and validating traction.
+Everything runs on one box. API, Web, Docker containers, Caddy. Environment challenges can spin up 2-4 containers each — concurrent match capacity depends on VPS size. Good for initial launch and validating traction.
 
 **Limits:** Neon free tier gives 191 compute hours/month — the match sweeper (runs every 60s) keeps the DB awake 24/7, burning ~720 hours/month. You'll hit the cap in ~8 days of continuous uptime. Storage caps at 0.5 GB (~30–50K matches). See `plans/capacity-analysis.md` for full breakdown.
 
@@ -589,7 +592,7 @@ Add a `docker-compose.prod.yml`:
 ```yaml
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     ports:
       - "127.0.0.1:5432:5432"
