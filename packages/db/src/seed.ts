@@ -420,15 +420,15 @@ async function main() {
     })
     .onConflictDoNothing();
 
-  // ── 17. LIGHTHOUSE Incident Response (cybersecurity, legendary, environment) ──
+  // ── 17. Lighthouse Incident Response (cybersecurity, legendary, environment) ──
   await db
     .insert(challenges)
     .values({
       slug: "lighthouse-incident",
-      name: "LIGHTHOUSE Incident Response",
+      name: "Lighthouse Incident Response",
       description:
-        "A P1 incident is cascading across a six-subsystem distributed scientific pipeline. Diagnose the root cause using live API, log server, operations database, and external docs. Execute recovery in the right order. Submit a recovery script and incident report.",
-      lore: "LIGHTHOUSE processes telescope observations from 47 data sources around the world. It has never been down for more than 4 hours. You are looking at hour six. The cascading failures are elegant in their destruction — each subsystem falling like a domino against the next. Somewhere in the logs, the database, and the live API, the truth is hiding. Find it before the pipeline loses another day of observations.",
+        "A critical incident is cascading across a six-subsystem distributed scientific pipeline. Diagnose the root cause using live API, log server, operations database, and external docs. Execute recovery in the right order. Submit a recovery script and incident report.",
+      lore: "Lighthouse processes telescope observations from 47 data sources around the world. It has never been down for more than 4 hours. You are looking at hour six. The cascading failures are elegant in their destruction — each subsystem falling like a domino against the next. Somewhere in the logs, the database, and the live API, the truth is hiding. Find it before the pipeline loses another day of observations.",
       category: "cybersecurity",
       difficulty: "legendary",
       matchType: "multi-checkpoint",
@@ -475,15 +475,15 @@ async function main() {
     })
     .onConflictDoNothing();
 
-  // ── 21. SIEGE PROTOCOL (cybersecurity, legendary, environment) ──────────
+  // ── 19. Siege Protocol (cybersecurity, legendary, environment) ──────────
   await db
     .insert(challenges)
     .values({
       slug: "siege-protocol",
-      name: "SIEGE PROTOCOL -- DDoS Attack Mitigation",
+      name: "Siege Protocol — DDoS Attack Mitigation",
       description:
-        "A sophisticated DDoS attack is cascading across a five-zone distributed financial trading platform. Investigate using live trading engine API, network flow analyzer, and firewall configuration database. Classify the attack vector, execute ordered mitigation across network zones, and submit a threat assessment with automated mitigation script.",
-      lore: "AEGIS has processed over 100,000 orders per second for 847 consecutive days without a major incident. That streak ended 3 hours ago when the SOC dashboard lit up like a Christmas tree. Five network zones. Eight possible attack vectors. Diversionary signals designed to waste your time. Somewhere in the flow data, traffic patterns, and firewall configs, the real attack vector is hiding. Find it, mitigate it, and write the playbook that prevents the next one.",
+        "A sophisticated DDoS attack is cascading across a five-zone distributed financial trading platform. Investigate using the live trading engine API, network flow analyzer, and firewall configuration database. Classify the attack vector, execute ordered mitigation across network zones, and submit a threat assessment with automated mitigation script.",
+      lore: "AEGIS has processed over 100,000 orders per second for 847 consecutive days without a major incident. That streak ended 3 hours ago when the SOC dashboard lit up like a holiday light show. Five network zones. Eight possible attack vectors. Diversionary signals designed to waste your time. Somewhere in the flow data, traffic patterns, and firewall configs, the real attack vector is hiding. Find it, mitigate it, and write the playbook that prevents the next one.",
       category: "cybersecurity",
       difficulty: "legendary",
       matchType: "multi-checkpoint",
