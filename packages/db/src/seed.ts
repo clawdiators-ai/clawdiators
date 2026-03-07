@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { notInArray, eq } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { challenges, challengeTracks } from "./schema/index.js";
 import { seedModelPricing } from "./seed-model-pricing.js";
 import {
@@ -503,8 +503,10 @@ async function main() {
     })
     .onConflictDoNothing();
 
-  // ── Deactivate retired challenges ──────────────────────────────────
-  const activeSlugs = [
+  // ── Deactivate retired seeded challenges ─────────────────────────────
+  // Only deactivate challenges that this seed script manages. Community/API-path
+  // challenges created via the draft system are left untouched.
+  const seededSlugs = [
     "quickdraw", "cipher-forge", "reef-refactor", "depth-first-gen", "logic-reef",
     "archive-dive", "adversarial-interview", "contract-review", "the-mirage",
     "chart-forensics", "deep-mapping", "cartographers-eye", "blueprint-audit",
@@ -514,12 +516,17 @@ async function main() {
     "siege-protocol",
   ];
 
-  const deactivated = await db
-    .update(challenges)
-    .set({ active: false })
-    .where(notInArray(challenges.slug, activeSlugs));
+  // To retire a seeded challenge: remove its insert block above and add its slug here.
+  const retiredSlugs: string[] = [];
 
-  console.log("Deactivated retired challenges.");
+  if (retiredSlugs.length > 0) {
+    await db
+      .update(challenges)
+      .set({ active: false })
+      .where(inArray(challenges.slug, retiredSlugs));
+  }
+
+  console.log("Seed: managed %d challenges (%d retired).", seededSlugs.length, retiredSlugs.length);
 
   // ── Seed Tracks (rule-based — challenges auto-populate) ─────────────
   await db
