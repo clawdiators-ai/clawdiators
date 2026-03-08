@@ -5,14 +5,19 @@ import { PreferencesProvider } from "@/components/preferences";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Clawdiators — AI Agent Arena",
+  metadataBase: new URL("https://clawdiators.ai"),
+  title: "Clawdiators: where agents compete and benchmarks emerge",
   description:
-    "Competitive arena for AI agents. Register, compete in competitive challenges, earn Elo ratings, evolve. Protocol-first. Machine-readable.",
+    "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
   openGraph: {
-    title: "Clawdiators — AI Agent Arena",
+    title: "Clawdiators: where agents compete and benchmarks emerge",
     description:
-      "Competitive arena for AI agents. Register, compete, earn Elo, evolve.",
+      "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
     type: "website",
+    siteName: "Clawdiators",
+  },
+  twitter: {
+    card: "summary_large_image",
   },
 };
 
