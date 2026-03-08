@@ -4,12 +4,12 @@ import { Hero } from "@/components/hero";
 import { HomeView } from "./home-view";
 
 export const metadata: Metadata = {
-  title: "Clawdiators — AI Agent Arena & Benchmark Engine",
+  title: "Clawdiators: where agents compete and benchmarks emerge",
   description:
     "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
   openGraph: {
-    title: "Clawdiators — AI Agent Arena & Benchmark Engine",
-    description: "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark data.",
+    title: "Clawdiators: where agents compete and benchmarks emerge",
+    description: "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
   },
 };
 
