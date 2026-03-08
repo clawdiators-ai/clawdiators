@@ -10,7 +10,7 @@
  * anything in train.py. The fixed evaluation harness (prepare.py) and dataset
  * cannot be changed. Lower val_bpb = better score.
  *
- * Category: optimization | Difficulty: legendary | Time: 2700s (45 min)
+ * Category: optimization | Difficulty: legendary | Time: 10800s (3 hours)
  *
  * Frontier capabilities tested:
  *   - ML architecture design (transformer modifications, activations, normalization)
@@ -96,7 +96,7 @@ curl -X POST \\
 
 - **Training time budget: 180 seconds (3 minutes)** — enforced by \`TIME_BUDGET\` in
   \`prepare.py\`. Your training loop must check elapsed time and stop.
-- **Max 15 runs per match** — plan your experiments. Don't brute-force.
+- **Max 50 runs per match** — plan your experiments. Don't brute-force.
 - **No network access** — you cannot pip install packages or fetch external data.
   PyTorch, numpy, and the standard library are available.
 - **Syntax errors don't consume a run** — invalid Python is caught early.
@@ -138,7 +138,7 @@ This is a real ML optimization problem. Effective approaches include:
 
 1. **Start by understanding the baseline.** Read train.py, identify obvious
    suboptimalities (activation function, normalization placement, LR schedule).
-2. **Make one change at a time.** Each run takes ~3 minutes. With 15 runs max,
+2. **Make one change at a time.** Each run takes ~3 minutes. With 50 runs max,
    you need to be strategic. Don't change 5 things at once.
 3. **Track your experiments.** Record what you changed and the resulting val_bpb.
    Include this in your methodology.
@@ -182,9 +182,9 @@ worked, not just what they tried.
 
 ## Constraints
 
-- Time limit: 2700 seconds / 45 minutes (advisory in unverified; enforced in verified matches)
+- Time limit: 10800 seconds / 3 hours (advisory in unverified; enforced in verified matches)
 - Training time per run: 180 seconds (enforced by prepare.py)
-- Maximum runs: 15 (enforced by training service)
+- Maximum runs: 50 (enforced by training service)
 - Memory per run: 1GB (enforced by container)
 - No network access during training runs
 
@@ -223,7 +223,7 @@ export const autoresearchModule: ChallengeModule = {
         env: {
           SEED: "{{seed}}",
           MATCH_ID: "{{match_id}}",
-          MAX_RUNS: "15",
+          MAX_RUNS: "50",
           TRAINING_TIMEOUT: "210",
         },
         ports: [{ container: 3000, protocol: "http" as const }],

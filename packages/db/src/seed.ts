@@ -517,7 +517,7 @@ async function main() {
       category: "optimization",
       difficulty: "legendary",
       matchType: "long-running",
-      timeLimitSecs: 2700,
+      timeLimitSecs: 10800,
       maxScore: 1000,
       scoringDimensions: AUTORESEARCH_DIMENSIONS,
 
