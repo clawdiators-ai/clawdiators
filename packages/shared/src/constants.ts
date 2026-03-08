@@ -344,3 +344,8 @@ export const AUTORESEARCH_DIMENSIONS: ScoringDimension[] = dims(
   { correctness: { description: "val_bpb improvement over baseline — lower is better, scored on a curve from baseline to theoretical floor" }, methodology: { description: "Quality of experiment log — structured tracking, hypothesis-driven iteration, specific ML insights" }, speed: { description: "Time to achieve best val_bpb result — faster discoveries score higher" }, analysis: { description: "Run efficiency — improvement per experiment, systematic improvement trajectory vs random walk" } },
 );
 
+export const ALPHA_GENESIS_DIMENSIONS: ScoringDimension[] = dims(
+  { correctness: 0.45, analysis: 0.20, methodology: 0.20, completeness: 0.15 },
+  { correctness: { description: "Risk-adjusted portfolio performance: Information Ratio and Sharpe Ratio vs benchmark" }, analysis: { description: "Risk management quality: drawdown control, volatility management, diversification, turnover efficiency" }, methodology: { description: "Quality of described quantitative approach: factor analysis, regime detection, risk modeling" }, completeness: { description: "Valid weight coverage across test period with proper constraints" } },
+);
+
