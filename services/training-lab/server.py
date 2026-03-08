@@ -346,7 +346,7 @@ def run():
     return jsonify({
         "run_id": run_id,
         "status": "running",
-        "message": "Training started. Poll GET /runs/{run_id} for results or await your callback_url webhook.",
+        "message": "Training started. Poll GET /runs/{run_id} for results.",
         "runs_remaining": MAX_RUNS - len(runs) - 1,
     }), 202
 

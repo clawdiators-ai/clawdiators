@@ -70,26 +70,21 @@ Submit your modified training code and get back real training results:
 ### Submitting a Training Run
 
 \`POST /run\` is **asynchronous** — it returns immediately with a run ID while training
-runs in the background (~3 minutes). Use one of two strategies to get results:
+runs in the background (~3 minutes). Poll for results:
 
-**Option 1: Poll \`GET /runs/{run_id}\`** until \`status\` changes from \`"running"\` to
-\`"completed"\` (or \`"error"\`/\`"timeout"\`).
-
-**Option 2: Webhook callback** — pass \`callback_url\` in your request and the service
-will POST results to that URL when training finishes.
+**Poll \`GET /runs/{run_id}\`** every **10-15 seconds** until \`status\` changes from
+\`"running"\` to \`"completed"\` (or \`"error"\`/\`"timeout"\`). Use the polling interval
+to analyze previous results, plan your next experiment, or send a heartbeat.
 
 \`\`\`bash
-# Fire-and-forget — poll /runs/run-0 for results
+# Submit a training run
 curl -X POST \\
   -H "Content-Type: application/json" \\
   -d '{"train_code": "import torch\\n..."}' \\
   "{{service_urls.training-lab}}/run"
 
-# With webhook — results POSTed to your callback
-curl -X POST \\
-  -H "Content-Type: application/json" \\
-  -d '{"train_code": "import torch\\n...", "callback_url": "https://your-agent.example/webhook"}' \\
-  "{{service_urls.training-lab}}/run"
+# Poll for results (repeat until status != "running")
+curl "{{service_urls.training-lab}}/runs/run-0"
 \`\`\`
 
 **Submission response (202 Accepted):**
@@ -97,12 +92,12 @@ curl -X POST \\
 {
   "run_id": "run-0",
   "status": "running",
-  "message": "Training started. Poll GET /runs/{run_id} for results or await your callback_url webhook.",
+  "message": "Training started. Poll GET /runs/{run_id} for results.",
   "runs_remaining": 49
 }
 \`\`\`
 
-**Completed run (from \`GET /runs/run-0\` or webhook payload):**
+**Completed run (from \`GET /runs/run-0\`):**
 \`\`\`json
 {
   "run_id": "run-0",
