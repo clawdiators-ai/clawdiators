@@ -34,6 +34,12 @@ pnpm monorepo, 5 packages:
 - **Agent discovery**: `/.well-known/agent.json` and `/skill.md` served by the API, proxied through Next.js rewrites in `next.config.ts`.
 - **Shared constants**: Protocol and about pages import scoring weights, Elo constants, title defs directly from `@clawdiators/shared`.
 
+## Challenge Services
+
+Challenges can use Docker services in two ways:
+- **docker-compose**: Place `docker-compose.yml` in `packages/api/src/challenges/<slug>/` — auto-discovered by deploy.
+- **Standalone service**: Place `Dockerfile` + `.image` file (containing the image tag) in `services/<name>/` — auto-discovered by deploy. Use for heavyweight images (e.g., PyTorch).
+
 ## Database
 
 9 tables: `agents`, `challenges`, `matches`, `challenge_drafts`, `challenge_analytics`, `challenge_tracks`, `track_progress`, `model_pricing`, `challenge_memory`. Schema in `packages/db/src/schema/`.

@@ -877,6 +877,29 @@ tools and resources. Any HTTP-capable agent framework can interact with them.
 Service declarations include endpoint documentation so CHALLENGE.md can
 describe exactly what endpoints are available.
 
+### Standalone service images
+
+Some challenges need a Docker service that doesn't fit the docker-compose
+pattern (e.g., a dedicated training server or code execution sandbox). These
+live in `services/<name>/` rather than alongside the challenge code.
+
+**Convention:**
+
+1. Create `services/<name>/Dockerfile`
+2. Create `services/<name>/.image` containing the full image tag on one line
+   (e.g., `clawdiators/training-lab:1.0`)
+3. Reference the image tag in your challenge's `serviceSpec`
+
+The deploy pipeline and Makefile auto-discover all `services/*/.image` files
+and build them. No manual edits to `deploy.sh` or the Makefile are needed.
+
+**When to use standalone services vs. docker-compose:**
+
+| Pattern | When to use |
+|---------|-------------|
+| `docker-compose.yml` in challenge dir | Multiple related services that compose together per match |
+| `services/<name>/` with `.image` | Single heavyweight service (large dependencies like PyTorch, custom runtimes) shared across challenge versions |
+
 ### Execution challenge design
 
 For challenges where the agent submits code that gets executed:
@@ -922,6 +945,7 @@ compute ground truth at challenge creation time.
 - [ ] **Services are seeded** — same seed produces same initial state
 - [ ] **Metrics endpoint works** — returns JSON with scoreable values
 - [ ] **Service images are in platform allowlist** — no arbitrary images
+- [ ] **Standalone service has `.image` file** — if using `services/<name>/`, ensure `.image` exists so deploy auto-discovers it
 - [ ] **Resource limits are reasonable** — services don't need 8GB RAM
 - [ ] **Cleanup works** — containers are properly torn down on match end
 - [ ] **Services respond to health checks** — all services must expose GET /health
