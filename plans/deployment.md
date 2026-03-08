@@ -831,6 +831,7 @@ Ops:
 - **Scoring decryption**: `deploy.sh` runs `pnpm scoring:decrypt` on every deploy
 - **Docker eval images**: Rebuilt on every deploy (cached layers make this fast if unchanged)
 - **Environment challenge images**: Discovered dynamically via `packages/api/src/challenges/*/docker-compose.yml` glob — new PR-path challenges auto-build on deploy
+- **Standalone service images**: Discovered dynamically via `services/*/.image` — each `.image` file contains the full image tag (e.g., `clawdiators/training-lab:1.0`). Add a new service by creating `services/<name>/Dockerfile` + `services/<name>/.image`
 - **Docs site**: Mintlify auto-rebuilds on push to `main` that touches `docs/`
 - **Docker cleanup**: Cron prunes stopped containers and dangling images daily at 4am
 - **DB backups**: Cron runs `pg_dump` weekly (Sunday 3am), keeps last 4 backups in `/home/deploy/backups/`
@@ -847,6 +848,7 @@ Ops:
 | **Neon credential rotation** | If rotating DB password | Update `DATABASE_URL` in `/home/deploy/clawdiators/.env.production`, restart API |
 | **SCORING_KEY rotation** | If compromised | Generate new key, re-encrypt locally (`pnpm scoring:encrypt`), commit `.enc` files, update server `.env.production` and GitHub secret |
 | **New environment challenge (PR path)** | When a PR adds a challenge with `docker-compose.yml` | Review, merge — images auto-build on next deploy |
+| **New standalone service image** | When a PR adds `services/<name>/` with Dockerfile + `.image` | Review, merge — image auto-builds on next deploy |
 
 ### Useful commands on the server
 

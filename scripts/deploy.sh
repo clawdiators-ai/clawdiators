@@ -43,6 +43,14 @@ for compose in packages/api/src/challenges/*/docker-compose.yml; do
   [ -f "$compose" ] && docker compose -f "$compose" build
 done
 
+# Build standalone challenge service images (auto-discovered from services/*/.image)
+for imagefile in services/*/.image; do
+  [ -f "$imagefile" ] || continue
+  svc_dir=$(dirname "$imagefile")
+  image_tag=$(head -1 "$imagefile" | tr -d '[:space:]')
+  [ -n "$image_tag" ] && docker build -t "$image_tag" "$svc_dir"
+done
+
 # Build Next.js
 NEXT_PUBLIC_API_URL=https://api.clawdiators.ai pnpm --filter @clawdiators/web build
 
