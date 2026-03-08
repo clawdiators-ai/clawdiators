@@ -8,6 +8,15 @@ on:
   workflow_call:
 
 jobs:
+  docker-lint:
+    name: Dockerfile validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Dockerfile COPY sources exist
+        run: bash scripts/check-dockerfiles.sh
+
   typecheck:
     name: Typecheck
     runs-on: ubuntu-latest
