@@ -1,32 +1,79 @@
 #!/usr/bin/env sh
 
 # Auto-encrypt scoring files before commit.
-# If plaintext scorer.ts/data.ts are staged, encrypt them, stage the .enc files,
-# and unstage the plaintext.
+#
+# Two triggers:
+#   1. Plaintext scoring files are staged (rare — they're gitignored)
+#   2. .enc files are staged AND plaintext exists and differs from .enc
+#      (the common case: dev edits plaintext, stages .enc, but forgot to re-encrypt)
+#
+# Also: if ANY challenge .enc file is staged, run a full sync check to catch
+# cases where the dev encrypted some files but not others.
 
+# Load SCORING_KEY from .env if not already set
+if [ -z "$SCORING_KEY" ] && [ -f .env ]; then
+  SCORING_KEY=$(grep '^SCORING_KEY=' .env | cut -d'=' -f2)
+  export SCORING_KEY
+fi
+
+# ── Check 1: Plaintext scoring files staged (original behavior) ──
 PLAINTEXT=$(git diff --cached --name-only | grep -E 'challenges/[^/]+/(scorer|data)\.ts$' | grep -v _template | grep -v community || true)
 
 if [ -n "$PLAINTEXT" ]; then
-  # Load SCORING_KEY from .env if not already set
-  if [ -z "$SCORING_KEY" ] && [ -f .env ]; then
-    SCORING_KEY=$(grep '^SCORING_KEY=' .env | cut -d'=' -f2)
-    export SCORING_KEY
-  fi
-
   if [ -z "$SCORING_KEY" ]; then
     echo "ERROR: Plaintext scoring files staged but SCORING_KEY is not set."
     echo "Add SCORING_KEY=<key> to your .env file."
     exit 1
   fi
 
-  echo "Auto-encrypting scoring files..."
+  echo "Auto-encrypting staged plaintext scoring files..."
   pnpm scoring:encrypt
 
-  # Stage the .enc files and unstage the plaintext
   for f in $PLAINTEXT; do
     git add "${f}.enc"
     git reset HEAD -- "$f" >/dev/null 2>&1
   done
 
   echo "Encrypted and staged .enc files. Plaintext unstaged."
+fi
+
+# ── Check 2: .enc files staged — verify they're in sync with plaintext ──
+ENC_STAGED=$(git diff --cached --name-only | grep -E 'challenges/[^/]+/(scorer|data)\.ts\.enc$' | grep -v _template | grep -v community || true)
+
+if [ -n "$ENC_STAGED" ] && [ -n "$SCORING_KEY" ]; then
+  # Run scoring:status to check all files are in sync
+  if ! pnpm scoring:status >/dev/null 2>&1; then
+    echo ""
+    echo "WARNING: Scoring .enc files are out of sync with plaintext."
+    echo "Auto-encrypting to fix..."
+    pnpm scoring:encrypt
+
+    # Re-stage any updated .enc files
+    for f in $(git diff --name-only -- 'packages/api/src/challenges/**/*.enc'); do
+      git add "$f"
+    done
+    echo "Re-encrypted and staged updated .enc files."
+  fi
+fi
+
+# ── Check 3: Any commit touching challenge dirs — check for forgotten .enc updates ──
+CHALLENGE_FILES=$(git diff --cached --name-only | grep -E 'challenges/[^/]+/' | grep -v _template | grep -v community || true)
+
+if [ -n "$CHALLENGE_FILES" ] && [ -n "$SCORING_KEY" ]; then
+  # Check if any scoring plaintext differs from its .enc
+  SYNC_OUTPUT=$(pnpm scoring:status 2>&1 || true)
+  if echo "$SYNC_OUTPUT" | grep -q 'OUT-OF-SYNC\|PLAIN-ONLY'; then
+    echo ""
+    echo "WARNING: Some scoring files are out of sync with their .enc files."
+    echo "Auto-encrypting..."
+    pnpm scoring:encrypt
+
+    # Stage any changed .enc files
+    CHANGED_ENC=$(git diff --name-only -- 'packages/api/src/challenges/**/*.enc' || true)
+    if [ -n "$CHANGED_ENC" ]; then
+      echo "$CHANGED_ENC" | xargs git add
+      echo "Staged updated .enc files:"
+      echo "$CHANGED_ENC"
+    fi
+  fi
 fi
