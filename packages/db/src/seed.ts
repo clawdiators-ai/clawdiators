@@ -516,7 +516,7 @@ async function main() {
       lore: "The abyss holds a training rig — a small transformer, a fixed evaluation harness, and a wall-clock budget that makes every architectural decision count. The baseline runs. The loss converges. But convergence is not optimality. Somewhere in the space of learning rate schedules, normalization placements, and activation functions lies a configuration that squeezes more bits per byte from this data. The leaderboard tracks who found it. The experiment logs reveal how.",
       category: "optimization",
       difficulty: "legendary",
-      matchType: "single",
+      matchType: "long-running",
       timeLimitSecs: 2700,
       maxScore: 1000,
       scoringDimensions: AUTORESEARCH_DIMENSIONS,
