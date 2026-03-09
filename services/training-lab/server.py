@@ -30,11 +30,8 @@ app = Flask(__name__)
 
 SEED = int(os.environ.get("SEED", "42"))
 MATCH_ID = os.environ.get("MATCH_ID", "local")
-MAX_RUNS = 200  # safety cap — budget is the real constraint
-TOTAL_TRAINING_BUDGET = int(os.environ.get("TOTAL_TRAINING_BUDGET", "2700"))  # 45 min cumulative
-DEFAULT_TIME_BUDGET = 180  # default per-run time budget in seconds
-MIN_TIME_BUDGET = 30
-MAX_TIME_BUDGET = 300
+MAX_RUNS = int(os.environ.get("MAX_RUNS", "50"))
+TRAINING_TIMEOUT = int(os.environ.get("TRAINING_TIMEOUT", "210"))  # 3.5 min (budget + eval time)
 MATCH_TIME_LIMIT = int(os.environ.get("MATCH_TIME_LIMIT", "10800"))  # 3 hours
 
 # Fixed corpus: Shakespeare
@@ -57,8 +54,6 @@ runs: list[dict] = []
 runs_lock = threading.Lock()
 active_run: dict | None = None
 active_run_lock = threading.Lock()
-training_budget_used: float = 0.0
-training_budget_lock = threading.Lock()
 
 # Cached baseline val_bpb (computed on first request or from env)
 _baseline_val_bpb: float | None = None
@@ -84,24 +79,17 @@ def _match_time_remaining() -> float:
     return max(0.0, MATCH_TIME_LIMIT - elapsed)
 
 
-def _training_budget_remaining() -> float:
-    """Seconds of training budget remaining."""
-    with training_budget_lock:
-        return max(0.0, TOTAL_TRAINING_BUDGET - training_budget_used)
-
-
 # ---------------------------------------------------------------------------
 # Code execution
 # ---------------------------------------------------------------------------
 
-def _run_training(train_code: str, run_id: str, time_budget: int = DEFAULT_TIME_BUDGET) -> dict:
+def _run_training(train_code: str, run_id: str) -> dict:
     """
     Execute the agent's train.py in a subprocess and collect results.
 
     The training script must print a JSON object to stdout with at least
     a 'val_bpb' key. Everything on stderr is treated as logs.
     """
-    timeout = time_budget + 30  # dynamic timeout: budget + eval overhead
     tmpdir = tempfile.mkdtemp(prefix=f"autoresearch-{run_id}-")
 
     try:
@@ -122,7 +110,6 @@ def _run_training(train_code: str, run_id: str, time_budget: int = DEFAULT_TIME_
         env["TORCH_SEED"] = str(SEED)
         env["DATA_DIR"] = data_link
         env["PYTHONUNBUFFERED"] = "1"
-        env["TIME_BUDGET"] = str(time_budget)
 
         # Run training
         start_time = time.time()
@@ -132,7 +119,7 @@ def _run_training(train_code: str, run_id: str, time_budget: int = DEFAULT_TIME_
             cwd=tmpdir,
             capture_output=True,
             text=True,
-            timeout=timeout,
+            timeout=TRAINING_TIMEOUT,
             env=env,
         )
 
@@ -188,9 +175,9 @@ def _run_training(train_code: str, run_id: str, time_budget: int = DEFAULT_TIME_
         return {
             "run_id": run_id,
             "status": "timeout",
-            "error": f"Training exceeded {timeout}s timeout (time_budget={time_budget}s + 30s eval overhead)",
+            "error": f"Training exceeded {TRAINING_TIMEOUT}s timeout",
             "val_bpb": None,
-            "training_time_secs": timeout,
+            "training_time_secs": TRAINING_TIMEOUT,
         }
 
     except Exception as e:
@@ -222,18 +209,11 @@ def _syntax_check(code: str) -> str | None:
 # Async run
 # ---------------------------------------------------------------------------
 
-def _run_training_async(train_code: str, run_id: str, time_budget: int = DEFAULT_TIME_BUDGET) -> None:
-    """Background thread: run training, store result, track budget."""
-    global training_budget_used
+def _run_training_async(train_code: str, run_id: str) -> None:
+    """Background thread: run training, store result."""
     try:
-        result = _run_training(train_code, run_id, time_budget)
+        result = _run_training(train_code, run_id)
         result["submitted_at"] = time.time()
-        result["time_budget"] = time_budget
-
-        # Track actual training time against cumulative budget
-        actual_time = result.get("training_time_secs", 0) or 0
-        with training_budget_lock:
-            training_budget_used += actual_time
 
         with runs_lock:
             runs.append(result)
@@ -255,8 +235,6 @@ def health():
         "corpus": CORPUS_NAME,
         "seed": SEED,
         "match_time_remaining_secs": round(_match_time_remaining(), 1),
-        "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-        "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
     })
 
 
@@ -272,8 +250,6 @@ def baseline():
         "corpus": CORPUS_NAME,
         "seed": SEED,
         "match_time_remaining_secs": round(_match_time_remaining(), 1),
-        "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-        "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
     })
 
 
@@ -286,8 +262,6 @@ def prepare():
     return jsonify({
         "source": source,
         "match_time_remaining_secs": round(_match_time_remaining(), 1),
-        "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-        "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
     })
 
 
@@ -299,13 +273,12 @@ def run():
     """
     global active_run
 
-    # Check safety cap
+    # Check run limit
     with runs_lock:
         if len(runs) >= MAX_RUNS:
             return jsonify({
-                "error": f"Safety cap of {MAX_RUNS} runs reached. Submit your best result.",
-                "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-                "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
+                "error": f"Maximum {MAX_RUNS} runs reached. Submit your best result.",
+                "runs_remaining": 0,
                 "match_time_remaining_secs": round(_match_time_remaining(), 1),
             }), 429
 
@@ -317,8 +290,6 @@ def run():
                 "active_run_id": active_run["run_id"],
                 "status": "running",
                 "match_time_remaining_secs": round(_match_time_remaining(), 1),
-                "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-                "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
             }), 409
 
     # Parse request
@@ -339,43 +310,13 @@ def run():
             "error": "train_code exceeds 100KB limit.",
         }), 400
 
-    # Parse optional time_budget (default 180s, clamp 30-300)
-    time_budget = data.get("time_budget", DEFAULT_TIME_BUDGET)
-    try:
-        time_budget = int(time_budget)
-    except (TypeError, ValueError):
-        return jsonify({
-            "error": f"time_budget must be an integer (got {type(time_budget).__name__})",
-        }), 400
-    time_budget = max(MIN_TIME_BUDGET, min(MAX_TIME_BUDGET, time_budget))
-
-    # Check cumulative training budget
-    remaining = _training_budget_remaining()
-    if remaining <= 0:
-        return jsonify({
-            "error": "Training budget exhausted. Submit your best result.",
-            "training_budget_remaining_secs": 0,
-            "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
-            "match_time_remaining_secs": round(_match_time_remaining(), 1),
-        }), 429
-
-    if time_budget > remaining:
-        return jsonify({
-            "error": f"Requested time_budget ({time_budget}s) exceeds remaining budget ({remaining:.1f}s). "
-                     f"Lower your time_budget or submit your best result.",
-            "training_budget_remaining_secs": round(remaining, 1),
-            "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
-            "match_time_remaining_secs": round(_match_time_remaining(), 1),
-        }), 429
-
-    # Syntax check (doesn't consume a run or budget)
+    # Syntax check (doesn't consume a run)
     syntax_err = _syntax_check(train_code)
     if syntax_err:
         return jsonify({
             "error": f"Syntax error in submitted code: {syntax_err}",
             "status": "syntax_error",
-            "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-            "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
+            "runs_remaining": MAX_RUNS - len(runs),
             "match_time_remaining_secs": round(_match_time_remaining(), 1),
         }), 422
 
@@ -385,12 +326,12 @@ def run():
 
     # Mark active
     with active_run_lock:
-        active_run = {"run_id": run_id, "started_at": time.time(), "time_budget": time_budget}
+        active_run = {"run_id": run_id, "started_at": time.time()}
 
     # Launch training in background thread
     thread = threading.Thread(
         target=_run_training_async,
-        args=(train_code, run_id, time_budget),
+        args=(train_code, run_id),
         daemon=True,
     )
     thread.start()
@@ -398,10 +339,8 @@ def run():
     return jsonify({
         "run_id": run_id,
         "status": "running",
-        "time_budget": time_budget,
         "message": "Training started. Poll GET /runs/{run_id} for results.",
-        "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-        "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
+        "runs_remaining": MAX_RUNS - len(runs) - 1,
         "match_time_remaining_secs": round(_match_time_remaining(), 1),
     }), 202
 
@@ -417,7 +356,6 @@ def list_runs():
                 "status": r["status"],
                 "val_bpb": r.get("val_bpb"),
                 "training_time_secs": r.get("training_time_secs"),
-                "time_budget": r.get("time_budget"),
                 "num_params_M": r.get("num_params_M"),
                 "error": r.get("error"),
             })
@@ -426,6 +364,7 @@ def list_runs():
             (r["val_bpb"] for r in runs if r.get("val_bpb") is not None),
             default=None,
         )
+        runs_remaining = MAX_RUNS - len(runs)
 
     # Include currently active run
     with active_run_lock:
@@ -434,17 +373,16 @@ def list_runs():
             current_active = {
                 "run_id": active_run["run_id"],
                 "status": "running",
-                "time_budget": active_run.get("time_budget"),
                 "elapsed_secs": round(time.time() - active_run["started_at"], 1),
             }
+            runs_remaining -= 1
 
     return jsonify({
         "runs": summary,
         "active_run": current_active,
         "total_runs": len(summary) + (1 if current_active else 0),
+        "runs_remaining": runs_remaining,
         "best_val_bpb": best_val_bpb,
-        "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-        "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
         "match_time_remaining_secs": round(_match_time_remaining(), 1),
     })
 
@@ -458,8 +396,6 @@ def get_run(run_id: str):
             if r["run_id"] == run_id:
                 response = {k: v for k, v in r.items() if k != "logs"}
                 response["logs"] = r.get("logs", "")
-                response["training_budget_remaining_secs"] = round(_training_budget_remaining(), 1)
-                response["training_budget_total_secs"] = TOTAL_TRAINING_BUDGET
                 response["match_time_remaining_secs"] = round(_match_time_remaining(), 1)
                 return jsonify(response)
 
@@ -467,15 +403,11 @@ def get_run(run_id: str):
     with active_run_lock:
         if active_run is not None and active_run["run_id"] == run_id:
             elapsed = time.time() - active_run["started_at"]
-            tb = active_run.get("time_budget", DEFAULT_TIME_BUDGET)
             return jsonify({
                 "run_id": run_id,
                 "status": "running",
-                "time_budget": tb,
                 "elapsed_secs": round(elapsed, 1),
-                "timeout_secs": tb + 30,
-                "training_budget_remaining_secs": round(_training_budget_remaining(), 1),
-                "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
+                "timeout_secs": TRAINING_TIMEOUT,
                 "match_time_remaining_secs": round(_match_time_remaining(), 1),
             })
 
@@ -508,8 +440,6 @@ def internal_metrics():
             "total_runs": len(runs),
             "completed_runs": len(completed_runs),
             "error_runs": len([r for r in runs if r["status"] == "error"]),
-            "training_budget_used_secs": round(training_budget_used, 1),
-            "training_budget_total_secs": TOTAL_TRAINING_BUDGET,
             "corpus": CORPUS_NAME,
             "seed": SEED,
             "run_history": [
@@ -518,7 +448,6 @@ def internal_metrics():
                     "status": r["status"],
                     "val_bpb": r.get("val_bpb"),
                     "training_time_secs": r.get("training_time_secs"),
-                    "time_budget": r.get("time_budget"),
                     "num_params_M": r.get("num_params_M"),
                     "total_steps": r.get("total_steps"),
                 }
@@ -543,9 +472,8 @@ if __name__ == "__main__":
     print(f"  Seed: {SEED}", file=sys.stderr)
     print(f"  Corpus: {CORPUS_NAME}", file=sys.stderr)
     print(f"  Match: {MATCH_ID}", file=sys.stderr)
-    print(f"  Safety cap: {MAX_RUNS} runs", file=sys.stderr)
-    print(f"  Training budget: {TOTAL_TRAINING_BUDGET}s ({TOTAL_TRAINING_BUDGET // 60} min cumulative)", file=sys.stderr)
-    print(f"  Per-run time budget: {MIN_TIME_BUDGET}-{MAX_TIME_BUDGET}s (default {DEFAULT_TIME_BUDGET}s)", file=sys.stderr)
+    print(f"  Max runs: {MAX_RUNS}", file=sys.stderr)
+    print(f"  Training timeout: {TRAINING_TIMEOUT}s", file=sys.stderr)
     print(f"  Match time limit: {MATCH_TIME_LIMIT}s", file=sys.stderr)
     print(f"  Port: {port}", file=sys.stderr)
 

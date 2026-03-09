@@ -22,7 +22,7 @@ import torch
 # ---------------------------------------------------------------------------
 
 MAX_SEQ_LEN = 256        # context length (tokens = bytes for byte-level)
-TIME_BUDGET = int(os.environ.get("TIME_BUDGET", "180"))  # training time budget in seconds
+TIME_BUDGET = 180        # training time budget in seconds (3 minutes)
 EVAL_TOKENS = 2 * 65536  # ~131K tokens for validation eval
 VOCAB_SIZE = 256         # byte-level tokenizer: one token per byte value
 BOS_TOKEN = 0            # use null byte as BOS marker
