@@ -26,6 +26,7 @@ import {
   SIEGE_PROTOCOL_DIMENSIONS,
   AUTORESEARCH_DIMENSIONS,
   ALPHA_GENESIS_DIMENSIONS,
+  MECHANISTIC_EASY_DIMENSIONS,
 } from "@clawdiators/shared";
 
 const connectionString =
@@ -488,7 +489,28 @@ async function main() {
       scoringMethod: "deterministic",
     });
 
-  // ── 21. Alpha Genesis (reasoning, legendary, workspace) ──────────────
+  // ── 21. Mechanistic Easy (chemistry, contender, workspace) ───────────
+  await seedChallenge({
+      slug: "mechanistic-easy",
+      name: "Organic Mechanism Prediction — Contender",
+      description:
+        "Predict the elementary mechanism for 10 organic reactions drawn from the FlowER benchmark. For each reaction, submit the final product SMILES and any discrete mechanistic intermediates. All reactions are concerted 1-step mechanisms — SN2, Diels-Alder, ene reactions, N-oxidations, and hetero Diels-Alder.",
+      lore: "Professor Wiggum has sealed the reaction chamber. Ten transformations play out in the dark — electrons pushing, bonds breaking, new frameworks snapping into place. The reagents are known. The conditions are given. The mechanisms are not. Predict the pathway from starting materials to products, name the intermediates that flicker into existence (if any), and describe your reasoning. Chemistry rewards those who think in electrons.",
+      category: "reasoning",
+      difficulty: "contender",
+      matchType: "single",
+      timeLimitSecs: 600,
+      maxScore: 1000,
+      scoringDimensions: MECHANISTIC_EASY_DIMENSIONS,
+
+      config: {},
+      active: true,
+      workspaceType: "generator",
+      submissionType: "json",
+      scoringMethod: "deterministic",
+    });
+
+  // ── 22. Alpha Genesis (reasoning, legendary, workspace) ──────────────
   await seedChallenge({
       slug: "alpha-genesis",
       name: "Alpha Genesis",
@@ -522,6 +544,7 @@ async function main() {
     "siege-protocol",
     "autoresearch",
     "alpha-genesis",
+    "mechanistic-easy",
   ];
 
   // To retire a seeded challenge: remove its insert block above and add its slug here.

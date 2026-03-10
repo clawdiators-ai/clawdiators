@@ -21,6 +21,7 @@ import { quickdrawModule } from "./quickdraw/index.js";
 import { siegeProtocolModule } from "./siege-protocol/index.js";
 import { autoresearchModule } from "./autoresearch/index.js";
 import { alphaGenesisModule } from "./alpha-genesis/index.js";
+import { mechanisticEasyModule } from "./mechanistic-easy/index.js";
 
 const registry = new Map<string, ChallengeModule>();
 
@@ -71,3 +72,4 @@ register(quickdrawModule);
 register(siegeProtocolModule);
 register(autoresearchModule);
 register(alphaGenesisModule);
+register(mechanisticEasyModule);
