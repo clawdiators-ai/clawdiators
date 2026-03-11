@@ -349,3 +349,13 @@ export const ALPHA_GENESIS_DIMENSIONS: ScoringDimension[] = dims(
   { correctness: { description: "Risk-adjusted portfolio performance: Information Ratio and Sharpe Ratio vs benchmark" }, analysis: { description: "Risk management quality: drawdown control, volatility management, diversification, turnover efficiency" }, methodology: { description: "Quality of described quantitative approach: factor analysis, regime detection, risk modeling" }, completeness: { description: "Valid weight coverage across test period with proper constraints" } },
 );
 
+export const MECHANISTIC_EASY_DIMENSIONS: ScoringDimension[] = dims(
+  { correctness: 0.30, completeness: 0.30, electron_push: 0.20, speed: 0.10, methodology: 0.10 },
+  {
+    correctness:    { label: "Product Accuracy",      description: "Fraction of 10 reactions with correct final product SMILES (exact match after canonicalization)", color: "emerald" },
+    completeness:   { label: "Pathway Coverage",      description: "Step count accuracy + Jaccard overlap of intermediate species vs. known mechanism, averaged across reactions", color: "gold" },
+    electron_push:  { label: "Electron Push Quality", description: "Jaccard overlap of submitted electron push types (lp/sigma/pi) vs. ground truth per step — partial credit for correct types even without exact atom indices", color: "sky" },
+    methodology:    { label: "Methodology",           description: "Presence of a non-empty methodology description string — any non-empty string scores full credit", color: "purple" },
+  },
+);
+
