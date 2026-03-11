@@ -22,9 +22,10 @@ const SKIP_DIRS = new Set(["_template", "community", "primitives"]);
 
 const challengesDir = resolve(import.meta.dirname ?? __dirname, "../src/challenges");
 
-function getKey(): Buffer {
+function getKey(required: boolean = true): Buffer | null {
   const hex = process.env.SCORING_KEY;
   if (!hex || hex.length !== 64) {
+    if (!required) return null;
     console.error("ERROR: SCORING_KEY env var must be a 64-character hex string (32 bytes).");
     process.exit(1);
   }
@@ -122,7 +123,11 @@ function doEncrypt() {
 }
 
 function doDecrypt() {
-  const key = getKey();
+  const key = getKey(false);
+  if (!key) {
+    console.log("SKIP: SCORING_KEY not set, skipping decryption.");
+    return;
+  }
   const dirs = listChallengeDirs();
   let count = 0;
 
@@ -160,7 +165,11 @@ function doDecrypt() {
 }
 
 function doStatus() {
-  const key = getKey();
+  const key = getKey(false);
+  if (!key) {
+    console.log("SKIP: SCORING_KEY not set, cannot check scoring file status.");
+    return;
+  }
   const dirs = listChallengeDirs();
 
   const symbols: Record<FileStatus, string> = {
