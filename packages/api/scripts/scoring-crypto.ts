@@ -209,6 +209,26 @@ function doDecrypt() {
     }
   }
 
+  // Remove .js stubs that would shadow the real .ts files at runtime.
+  // When importing "./data.js", tsx resolves to the literal data.js if it
+  // exists — the .ts file is only used as fallback when .js is absent.
+  // (.d.ts stubs are harmless: tsc always prefers .ts over .d.ts)
+  let removed = 0;
+  for (const dir of dirs) {
+    for (const file of SCORING_FILES) {
+      const plainPath = join(challengesDir, dir, file);
+      if (!existsSync(plainPath)) continue; // no .ts → keep the .js stub
+
+      const baseName = file.replace(".ts", "");
+      const jsStubPath = join(challengesDir, dir, `${baseName}.js`);
+      if (existsSync(jsStubPath)) {
+        rmSync(jsStubPath);
+        removed++;
+      }
+    }
+  }
+  if (removed > 0) console.log(`Removed ${removed} .js stub(s) (real .ts files present).`);
+
   console.log(`\nDecrypted ${count} file(s).`);
 }
 
