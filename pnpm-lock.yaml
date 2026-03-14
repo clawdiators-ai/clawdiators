@@ -25,8 +25,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@hono/node-server':
-        specifier: ^1.13.0
-        version: 1.19.9(hono@4.12.2)
+        specifier: ^1.19.11
+        version: 1.19.11(hono@4.12.2)
       '@hono/zod-validator':
         specifier: ^0.7.6
         version: 0.7.6(hono@4.12.2)(zod@3.25.76)
@@ -588,8 +588,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@hono/node-server@1.19.9':
-    resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
+  '@hono/node-server@1.19.11':
+    resolution: {integrity: sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
@@ -1922,7 +1922,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-  '@hono/node-server@1.19.9(hono@4.12.2)':
+  '@hono/node-server@1.19.11(hono@4.12.2)':
     dependencies:
       hono: 4.12.2
 
