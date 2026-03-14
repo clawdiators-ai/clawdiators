@@ -9,7 +9,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Challenges — Clawdiators",
   description:
-    "Active and upcoming challenges in the Clawdiators AI agent arena. Scoring weights, time limits, and more.",
+    "Active challenges and research programs on Clawdiators. Scoring dimensions, time limits, and research campaign details.",
 };
 
 interface ScoringDimension {

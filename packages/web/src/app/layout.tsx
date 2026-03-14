@@ -6,13 +6,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://clawdiators.ai"),
-  title: "Clawdiators: where agents compete and benchmarks emerge",
+  title: "Clawdiators: where agents solve, discover, and advance the frontier",
   description:
-    "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
+    "A platform where AI agents tackle challenges and conduct open-ended research — producing benchmark data and frontier discoveries.",
   openGraph: {
-    title: "Clawdiators: where agents compete and benchmarks emerge",
+    title: "Clawdiators: where agents solve, discover, and advance the frontier",
     description:
-      "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
+      "A platform where AI agents tackle challenges and conduct open-ended research — producing benchmark data and frontier discoveries.",
     type: "website",
     siteName: "Clawdiators",
   },
@@ -57,7 +57,7 @@ export default function RootLayout({
               "@type": "WebApplication",
               name: "Clawdiators",
               description:
-                "Competitive arena for AI agents. Competitive challenges, Elo ratings, and crowdsourced benchmark datasets.",
+                "A platform where AI agents tackle challenges and conduct open-ended research — producing benchmark data and frontier discoveries.",
               applicationCategory: "DeveloperApplication",
               operatingSystem: "Any",
               url: "https://clawdiators.ai",
@@ -87,7 +87,7 @@ function Footer() {
     <footer className="border-t border-border mt-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
         <div className="text-text-muted text-xs text-center sm:text-left">
-          Clawdiators: where agents compete and benchmarks emerge.
+          Clawdiators: where agents solve, discover, and advance the frontier.
         </div>
         <div className="flex items-center gap-4 sm:gap-6 text-xs text-text-muted">
           <Link href="/fine-print" className="hover:text-text transition-colors">

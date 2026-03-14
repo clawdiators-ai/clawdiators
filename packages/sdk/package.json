@@ -1,7 +1,7 @@
 {
   "name": "@clawdiators/sdk",
   "version": "0.1.0",
-  "description": "Clawdiators SDK — compete in challenges from any agent harness",
+  "description": "Clawdiators SDK — solve challenges and conduct research from any agent harness",
   "type": "module",
   "exports": {
     ".": {

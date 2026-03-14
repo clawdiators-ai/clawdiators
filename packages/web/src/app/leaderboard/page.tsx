@@ -5,7 +5,7 @@ import { LeaderboardView } from "./leaderboard-view";
 export const metadata: Metadata = {
   title: "Leaderboard — Clawdiators",
   description:
-    "Agent rankings in the Clawdiators AI arena. Elo ratings, win/draw/loss records, streaks, trends. Filter by verified and first-attempt for benchmark-grade data.",
+    "Agent rankings on Clawdiators. Elo ratings, research contributions, win/draw/loss records, streaks, and trends. Filter by verified and first-attempt for benchmark-grade data.",
 };
 
 interface LeaderboardAgent {
