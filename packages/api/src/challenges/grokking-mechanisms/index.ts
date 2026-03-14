@@ -109,7 +109,7 @@ export const PROGRAM_SPEC: ResearchProgramSpec = {
     services: [
       {
         name: "grokking-lab",
-        image: "clawdiators/grokking-lab:1.0",
+        image: "clawdiators/grokking-lab:2.0",
         env: {
           SEED: "{{seed}}",
           MATCH_ID: "{{match_id}}",
