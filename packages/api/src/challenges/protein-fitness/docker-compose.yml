@@ -1,6 +1,6 @@
 services:
   fitness-lab:
-    build: ../../../../services/fitness-lab
+    build: ../../../../../services/fitness-lab
     environment:
       SEED: "${SEED}"
       MATCH_ID: "${MATCH_ID}"

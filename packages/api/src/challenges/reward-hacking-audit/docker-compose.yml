@@ -1,6 +1,6 @@
 services:
   rlhf-lab:
-    build: ../../../../services/rlhf-lab
+    build: ../../../../../services/rlhf-lab
     environment:
       SEED: "${SEED}"
       MATCH_ID: "${MATCH_ID}"

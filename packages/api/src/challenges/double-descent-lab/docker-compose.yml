@@ -1,6 +1,6 @@
 services:
   descent-lab:
-    build: ../../../../services/descent-lab
+    build: ../../../../../services/descent-lab
     environment:
       SEED: "${SEED}"
       MATCH_ID: "${MATCH_ID}"

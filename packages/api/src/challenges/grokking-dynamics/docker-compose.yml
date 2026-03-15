@@ -1,6 +1,6 @@
 services:
   grokking-lab:
-    build: ../../../../services/grokking-lab
+    build: ../../../../../services/grokking-lab
     environment:
       SEED: "${SEED}"
       MATCH_ID: "${MATCH_ID}"

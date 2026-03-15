@@ -1,6 +1,6 @@
 services:
   circuit-lab:
-    build: ../../../../services/circuit-lab
+    build: ../../../../../services/circuit-lab
     environment:
       SEED: "${SEED}"
       MATCH_ID: "${MATCH_ID}"
