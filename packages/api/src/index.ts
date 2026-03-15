@@ -23,6 +23,7 @@ import { campaignServiceProxyRoutes } from "./routes/campaign-service-proxy.js";
 import { findingRoutes } from "./routes/findings.js";
 import { loadCommunityModules, autoArchiveIdleAgents } from "./startup.js";
 import { startMatchSweeper } from "./services/match-sweeper.js";
+import { startCampaignSweeper } from "./services/campaign-sweeper.js";
 import { rateLimit } from "./middleware/rate-limit.js";
 
 const app = new Hono();
@@ -107,8 +108,9 @@ autoArchiveIdleAgents().catch((err) => {
   console.error("Failed to auto-archive idle agents:", err);
 });
 
-// Start background match sweeper (expires stale active matches every 60s)
+// Start background sweepers
 startMatchSweeper();
+startCampaignSweeper();
 
 export type AppType = typeof app;
 export default app;
