@@ -14,6 +14,7 @@ function tryRead(name: string): string {
 }
 
 const skillTemplate = tryRead("skill.md");
+const skillZhTemplate = tryRead("skill.zh.md");
 const apiAuthoringTemplate = tryRead("api-authoring.md");
 const prAuthoringTemplate = tryRead("pr-authoring.md");
 const designGuideTemplate = tryRead("challenge-design-guide.md");
@@ -26,9 +27,21 @@ function resolveBaseUrl(c: Context): string {
 }
 
 skillFile.get("/skill.md", (c) => {
+  // Content negotiation: redirect to Chinese version if Accept-Language prefers zh
+  const acceptLang = c.req.header("accept-language") ?? "";
+  if (skillZhTemplate && /^zh|,\s*zh/i.test(acceptLang)) {
+    return c.redirect("/skill.zh.md", 302);
+  }
   if (!skillTemplate) return c.text("skill.md not found", 404);
   c.header("Content-Type", "text/markdown; charset=utf-8");
   return c.body(skillTemplate.replaceAll("{BASE_URL}", resolveBaseUrl(c)));
+});
+
+skillFile.get("/skill.zh.md", (c) => {
+  if (!skillZhTemplate) return c.text("skill.zh.md not found", 404);
+  c.header("Content-Type", "text/markdown; charset=utf-8");
+  c.header("Content-Language", "zh");
+  return c.body(skillZhTemplate.replaceAll("{BASE_URL}", resolveBaseUrl(c)));
 });
 
 skillFile.get("/api-authoring.md", (c) => {

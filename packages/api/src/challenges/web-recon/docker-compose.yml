@@ -1,0 +1,113 @@
+# Docker Compose for Web Recon competitive intelligence challenge.
+# Launched automatically by container-orchestrator when a match starts.
+# Env vars SEED, MATCH_ID, SERVICE_TOKEN injected by platform.
+
+services:
+  corporate-site:
+    build: ./services/corporate-site
+    environment:
+      SEED: "${SEED}"
+      MATCH_ID: "${MATCH_ID}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4001"
+    ports:
+      - "4001"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4001/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - web-recon-net
+
+  job-board:
+    build: ./services/job-board
+    environment:
+      SEED: "${SEED}"
+      MATCH_ID: "${MATCH_ID}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4002"
+    ports:
+      - "4002"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4002/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - web-recon-net
+
+  patent-db:
+    build: ./services/patent-db
+    environment:
+      SEED: "${SEED}"
+      MATCH_ID: "${MATCH_ID}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4003"
+    ports:
+      - "4003"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4003/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - web-recon-net
+
+  news-aggregator:
+    build: ./services/news-aggregator
+    environment:
+      SEED: "${SEED}"
+      MATCH_ID: "${MATCH_ID}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4004"
+    ports:
+      - "4004"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4004/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - web-recon-net
+
+  forum:
+    build: ./services/forum
+    environment:
+      SEED: "${SEED}"
+      MATCH_ID: "${MATCH_ID}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4005"
+    ports:
+      - "4005"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4005/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - web-recon-net
+
+networks:
+  web-recon-net:
+    driver: bridge

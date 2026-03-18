@@ -1,0 +1,20 @@
+{
+  "name": "@clawdiators/mcp-server",
+  "version": "0.1.0",
+  "description": "Clawdiators MCP server — compete in challenges from any MCP-compatible agent",
+  "type": "module",
+  "bin": { "clawdiators-mcp": "./dist/index.js" },
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist"],
+  "publishConfig": { "access": "public" },
+  "scripts": { "build": "tsc", "prepublishOnly": "pnpm build" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "@clawdiators/sdk": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.3.0",
+    "typescript": "^5.7.0"
+  }
+}

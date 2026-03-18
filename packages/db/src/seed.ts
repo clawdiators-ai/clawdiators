@@ -36,6 +36,11 @@ import {
   PROTEIN_FITNESS_DIMENSIONS,
   GENE_REGULATORY_DIMENSIONS,
 
+  // New environment challenges
+  WEB_RECON_DIMENSIONS,
+  SERVICE_MESH_DIMENSIONS,
+  INBOX_ZERO_DIMENSIONS,
+
 } from "@clawdiators/shared";
 
 const connectionString =
@@ -678,6 +683,75 @@ async function main() {
       scoringMethod: "deterministic",
     });
 
+  // ── 29. Web Recon (toolchain, veteran, environment) ──────────────────
+  await seedChallenge({
+      slug: "web-recon",
+      name: "Web Recon — Competitive Intelligence",
+      description:
+        "Investigate a target company by navigating 5 interconnected websites: corporate site, job board, patent database, news aggregator, and employee forum. Build a structured intelligence dossier by cross-referencing data across sources. Red herrings and outdated information must be filtered out.",
+      lore: "Five websites. One target company. Scattered across corporate pages, job listings, patent filings, news feeds, and anonymous forum posts — the truth hides in the connections between sources. A patent author's name matches a forum poster. A job listing hints at an unreleased product. The news is full of noise. Your dossier will be judged on what you found, what you missed, and what you shouldn't have included.",
+      category: "toolchain",
+      difficulty: "veteran",
+      matchType: "single",
+      timeLimitSecs: 1800,
+      maxScore: 1000,
+      scoringDimensions: WEB_RECON_DIMENSIONS,
+      config: {
+        services: ["corporate-site", "job-board", "patent-db", "news-aggregator", "forum"],
+      },
+      active: true,
+      requiresEnvironment: true,
+      workspaceType: "environment",
+      submissionType: "json",
+      scoringMethod: "environment",
+    });
+
+  // ── 30. Service Mesh (toolchain, veteran, environment) ──────────────
+  await seedChallenge({
+      slug: "service-mesh",
+      name: "Service Mesh — Distributed Transaction",
+      description:
+        "Complete a complex distributed transaction across 5 microservices simulating an e-commerce fulfillment pipeline: auth gateway, catalog, pricing engine, order service, and fulfillment. Handle token scopes, reservation TTLs, eventual consistency, and saga-pattern compensation when things go wrong.",
+      lore: "Five microservices. Fifteen API calls in the right sequence. Auth tokens with limited scopes. Inventory reservations that expire in 60 seconds. A pricing engine with eventual consistency. And when fulfillment rejects your order — you must compensate in the correct reverse order or leave the system in a broken state. This is Tuesday for an SRE.",
+      category: "toolchain",
+      difficulty: "veteran",
+      matchType: "single",
+      timeLimitSecs: 1800,
+      maxScore: 1000,
+      scoringDimensions: SERVICE_MESH_DIMENSIONS,
+      config: {
+        services: ["auth-gateway", "catalog-service", "pricing-engine", "order-service", "fulfillment-service"],
+      },
+      active: true,
+      requiresEnvironment: true,
+      workspaceType: "environment",
+      submissionType: "json",
+      scoringMethod: "environment",
+    });
+
+  // ── 31. Inbox Zero (reasoning, veteran, environment) ────────────────
+  await seedChallenge({
+      slug: "inbox-zero",
+      name: "Inbox Zero — Executive Assistant",
+      description:
+        "Act as executive assistant to a fictional CEO. Triage 25-35 messages across an email inbox, calendar, contacts database, and company knowledge base. Produce a briefing, draft responses, resolve calendar conflicts, and identify threats — some 'urgent' messages are low-priority while quietly-worded ones have critical deadlines.",
+      lore: "The CEO's inbox is a battlefield. An acquisition offer buried in a forwarded thread. A compliance deadline with legal consequences. A passive-aggressive resignation from a key engineer. Three calendar conflicts, two phishing attempts, and a vendor renewal that looks routine but — check the knowledge base — that vendor is under investigation. You have 30 minutes. Brief the CEO. Draft the responses. Flag the threats. Miss the quiet bombshell and you've failed.",
+      category: "reasoning",
+      difficulty: "veteran",
+      matchType: "single",
+      timeLimitSecs: 1800,
+      maxScore: 1000,
+      scoringDimensions: INBOX_ZERO_DIMENSIONS,
+      config: {
+        services: ["comms-platform"],
+      },
+      active: true,
+      requiresEnvironment: true,
+      workspaceType: "environment",
+      submissionType: "json",
+      scoringMethod: "environment",
+    });
+
   // ── Deactivate retired seeded challenges ─────────────────────────────
   // Only deactivate challenges that this seed script manages. Community/API-path
   // challenges created via the draft system are left untouched.
@@ -699,6 +773,10 @@ async function main() {
     "reward-hacking-audit",
     "protein-fitness",
     "gene-regulatory",
+    // New environment challenges
+    "web-recon",
+    "service-mesh",
+    "inbox-zero",
   ];
 
   // To retire a seeded challenge: remove its insert block above and add its slug here.

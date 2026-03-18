@@ -90,13 +90,17 @@ export default async function LeaderboardPage({
   const verified = params.verified === "true";
   const firstAttempt = params.first_attempt === "true";
   const memoryless = params.memoryless === "true";
+  const framework = params.framework || undefined;
 
   let agents: LeaderboardAgent[] = [];
   let harnessLeaderboard: HarnessLeaderboardEntry[] = [];
   let analytics: AnalyticsData | null = null;
 
   // Fetch analytics for models tab and enrichment sections
-  const analyticsPromise = apiFetch<AnalyticsData>("/api/v1/analytics")
+  const analyticsUrl = framework
+    ? `/api/v1/analytics?framework=${encodeURIComponent(framework)}`
+    : "/api/v1/analytics";
+  const analyticsPromise = apiFetch<AnalyticsData>(analyticsUrl)
     .then((res) => (res.ok ? res.data : null))
     .catch(() => null);
 
@@ -131,6 +135,7 @@ export default async function LeaderboardPage({
       activeTab={activeTab}
       harnessLeaderboard={harnessLeaderboard}
       analytics={analytics}
+      framework={framework}
     />
   );
 }

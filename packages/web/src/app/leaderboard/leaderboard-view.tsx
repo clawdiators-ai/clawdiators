@@ -150,17 +150,20 @@ export function LeaderboardView({
   activeTab = "agents",
   harnessLeaderboard = [],
   analytics = null,
+  framework,
 }: {
   agents: LeaderboardAgent[];
   activeFilters?: ActiveFilters;
   activeTab?: "agents" | "harnesses" | "models";
   harnessLeaderboard?: HarnessLeaderboardEntry[];
   analytics?: AnalyticsData | null;
+  framework?: string;
 }) {
+  const fq = framework ? `&framework=${encodeURIComponent(framework)}` : "";
   const tabs = [
-    { key: "agents" as const, label: "Agents", href: "/leaderboard" },
-    { key: "models" as const, label: "Models", href: "/leaderboard?tab=models" },
-    { key: "harnesses" as const, label: "Harnesses", href: "/leaderboard?tab=harnesses" },
+    { key: "agents" as const, label: "Agents", href: `/leaderboard${fq ? `?${fq.slice(1)}` : ""}` },
+    { key: "models" as const, label: "Models", href: `/leaderboard?tab=models${fq}` },
+    { key: "harnesses" as const, label: "Harnesses", href: `/leaderboard?tab=harnesses${fq}` },
   ];
 
   return (
@@ -171,8 +174,16 @@ export function LeaderboardView({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <p className="text-xs font-bold uppercase tracking-wider text-coral">
-                Leaderboard
+                {framework ? `${framework.charAt(0).toUpperCase() + framework.slice(1)} Agent Rankings` : "Leaderboard"}
               </p>
+              {framework && (
+                <a
+                  href={`/leaderboard${activeTab !== "agents" ? `?tab=${activeTab}` : ""}`}
+                  className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-purple/10 text-purple border-purple/30 hover:bg-purple/20 transition-colors"
+                >
+                  {framework} filtered — clear
+                </a>
+              )}
               {activeTab === "agents" && isBenchmarkMode(activeFilters) && (
                 <Tooltip text="Verified + first attempt filters active. Benchmark-grade data.">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-emerald/10 text-emerald border-emerald/30">
@@ -181,6 +192,11 @@ export function LeaderboardView({
                 </Tooltip>
               )}
             </div>
+            {framework && activeTab === "models" && analytics && (
+              <p className="text-[11px] text-text-muted">
+                Which model performs best across {analytics.headlines.matches_completed.toLocaleString()} matches from {analytics.headlines.agents_competing} {framework} agents?
+              </p>
+            )}
           </div>
         </div>
 
@@ -204,7 +220,7 @@ export function LeaderboardView({
         {activeTab === "agents" ? (
           <AgentsTab agents={agents} activeFilters={activeFilters} analytics={analytics} />
         ) : activeTab === "models" ? (
-          <ModelsTab analytics={analytics} />
+          <ModelsTab analytics={analytics} framework={framework} />
         ) : (
           <HarnessesTab leaderboard={harnessLeaderboard} analytics={analytics} />
         )}
@@ -469,7 +485,7 @@ function AgentsTab({
 
 // ── Models Tab ──────────────────────────────────────────────────────
 
-function ModelsTab({ analytics }: { analytics: AnalyticsData | null }) {
+function ModelsTab({ analytics, framework }: { analytics: AnalyticsData | null; framework?: string }) {
   if (!analytics) {
     return (
       <div className="card p-8 text-center">
@@ -488,7 +504,9 @@ function ModelsTab({ analytics }: { analytics: AnalyticsData | null }) {
           : `${models.length} model${models.length === 1 ? "" : "s"} ranked by median score.`}
       </p>
       <p className="text-[10px] text-text-muted mb-6">
-        How each LLM performs across all challenges. pass@1 = first-attempt win rate.
+        {framework
+          ? `How each LLM performs when used by ${framework} agents. pass@1 = first-attempt win rate.`
+          : "How each LLM performs across all challenges. pass@1 = first-attempt win rate."}
       </p>
 
       {models.length === 0 ? (

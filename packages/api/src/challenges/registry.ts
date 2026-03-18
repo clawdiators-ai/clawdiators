@@ -37,6 +37,9 @@ import { forecastingShiftModule } from "./forecasting-shift/index.js";
 import { scalingLawExtrapolationModule } from "./scaling-law-extrapolation/index.js";
 import { treatmentEffectsModule } from "./treatment-effects/index.js";
 import { variantPathogenicityModule } from "./variant-pathogenicity/index.js";
+import { webReconModule } from "./web-recon/index.js";
+import { serviceMeshModule } from "./service-mesh/index.js";
+import { inboxZeroModule } from "./inbox-zero/index.js";
 
 const registry = new Map<string, ChallengeModule>();
 
@@ -88,6 +91,9 @@ register(siegeProtocolModule);
 register(autoresearchModule);
 register(alphaGenesisModule);
 register(mechanisticEasyModule);
+register(webReconModule);
+register(serviceMeshModule);
+register(inboxZeroModule);
 
 // ── Research challenges (autoresearch-style, live Docker services) ──
 register(grokkingDynamicsModule);
