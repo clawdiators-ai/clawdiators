@@ -60,6 +60,7 @@ interface ScoreTrendPoint {
 
 export interface PlatformAnalytics {
   computed_at: string;
+  framework_filter: string | null;
 
   // Headline stats (small set of meaningful numbers)
   headlines: {
@@ -98,8 +99,9 @@ function computeStats(scores: number[]): { mean: number; median: number; p25: nu
 
 // ── Main ──────────────────────────────────────────────────────────
 
-export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
-  const cached = getCache<PlatformAnalytics>(CACHE_KEY);
+export async function getPlatformAnalytics(framework?: string): Promise<PlatformAnalytics> {
+  const cacheKey = framework ? `${CACHE_KEY}:${framework}` : CACHE_KEY;
+  const cached = getCache<PlatformAnalytics>(cacheKey);
   if (cached) return cached;
 
   // Fetch all data
@@ -125,26 +127,35 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
     },
   });
 
-  const activeAgents = allAgents.filter((a) => !a.archivedAt && a.matchCount > 0);
+  // When framework filter is set, restrict to agents using that base framework
+  const frameworkAgentIds = framework
+    ? new Set(allAgents.filter((a) => (a.harness as any)?.baseFramework === framework).map((a) => a.id))
+    : null;
+
+  const filteredMatches = frameworkAgentIds
+    ? completedMatches.filter((m) => frameworkAgentIds.has(m.agentId))
+    : completedMatches;
+
+  const activeAgents = allAgents.filter((a) => !a.archivedAt && a.matchCount > 0 && (!frameworkAgentIds || frameworkAgentIds.has(a.id)));
   const challengeMap = new Map(allChallenges.map((c) => [c.id, c]));
 
   // ── Headlines ────────────────────────────────────────────────
 
-  const allScores = completedMatches
+  const allScores = filteredMatches
     .map((m) => m.score)
     .filter((s): s is number => s !== null)
     .sort((a, b) => a - b);
 
-  const wins = completedMatches.filter((m) => m.result === "win").length;
-  const verifiedCount = completedMatches.filter((m) => m.verified).length;
+  const wins = filteredMatches.filter((m) => m.result === "win").length;
+  const verifiedCount = filteredMatches.filter((m) => m.verified).length;
 
   const headlines = {
     agents_competing: activeAgents.length,
     challenges_live: allChallenges.length,
-    matches_completed: completedMatches.length,
+    matches_completed: filteredMatches.length,
     platform_median_score: allScores.length > 0 ? median(allScores) : null,
-    platform_win_rate: completedMatches.length > 0 ? round(wins / completedMatches.length, 3) : 0,
-    verified_pct: completedMatches.length > 0 ? round(verifiedCount / completedMatches.length, 3) : 0,
+    platform_win_rate: filteredMatches.length > 0 ? round(wins / filteredMatches.length, 3) : 0,
+    verified_pct: filteredMatches.length > 0 ? round(verifiedCount / filteredMatches.length, 3) : 0,
   };
 
   // ── Model Benchmark ──────────────────────────────────────────
@@ -152,8 +163,8 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
   // agent's base_model when metadata doesn't include model_id.
 
   const agentModelMap = new Map(allAgents.map((a) => [a.id, a.baseModel]));
-  const matchesByModel: Record<string, typeof completedMatches> = {};
-  for (const m of completedMatches) {
+  const matchesByModel: Record<string, typeof filteredMatches> = {};
+  for (const m of filteredMatches) {
     const modelId = (m.submissionMetadata as any)?.model_id
       ?? agentModelMap.get(m.agentId);
     if (!modelId) continue;
@@ -196,8 +207,8 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
 
   // ── Harness Benchmark ────────────────────────────────────────
 
-  const matchesByHarness: Record<string, typeof completedMatches> = {};
-  for (const m of completedMatches) {
+  const matchesByHarness: Record<string, typeof filteredMatches> = {};
+  for (const m of filteredMatches) {
     const hId = m.harnessId ?? (m.submissionMetadata as any)?.harness_id;
     if (!hId) continue;
     if (!matchesByHarness[hId]) matchesByHarness[hId] = [];
@@ -230,8 +241,8 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
   // ── Challenge Benchmark ──────────────────────────────────────
   // Per-challenge solve rates and difficulty analysis
 
-  const matchesByChallenge: Record<string, typeof completedMatches> = {};
-  for (const m of completedMatches) {
+  const matchesByChallenge: Record<string, typeof filteredMatches> = {};
+  for (const m of filteredMatches) {
     if (!matchesByChallenge[m.challengeId]) matchesByChallenge[m.challengeId] = [];
     matchesByChallenge[m.challengeId].push(m);
   }
@@ -298,7 +309,7 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
 
   const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
   const byDay: Record<string, number[]> = {};
-  for (const m of completedMatches) {
+  for (const m of filteredMatches) {
     if (m.completedAt && m.completedAt.getTime() >= ninetyDaysAgo && m.score !== null) {
       const day = m.completedAt.toISOString().slice(0, 10);
       if (!byDay[day]) byDay[day] = [];
@@ -316,6 +327,7 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
 
   const result: PlatformAnalytics = {
     computed_at: new Date().toISOString(),
+    framework_filter: framework ?? null,
     headlines,
     model_benchmark,
     harness_benchmark,
@@ -324,6 +336,6 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
     score_trend,
   };
 
-  setCache(CACHE_KEY, result, CACHE_TTL);
+  setCache(cacheKey, result, CACHE_TTL);
   return result;
 }

@@ -1,0 +1,108 @@
+# Docker Compose for Service Mesh challenge.
+# Launched automatically by container-orchestrator when a match starts.
+# Env vars SEED, SERVICE_TOKEN injected by platform.
+
+services:
+  auth-gateway:
+    build: ./services/auth-gateway
+    environment:
+      SEED: "${SEED}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4011"
+    ports:
+      - "4011"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4011/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - service-mesh-net
+
+  catalog-service:
+    build: ./services/catalog-service
+    environment:
+      SEED: "${SEED}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4012"
+    ports:
+      - "4012"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4012/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - service-mesh-net
+
+  pricing-engine:
+    build: ./services/pricing-engine
+    environment:
+      SEED: "${SEED}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4013"
+    ports:
+      - "4013"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4013/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - service-mesh-net
+
+  order-service:
+    build: ./services/order-service
+    environment:
+      SEED: "${SEED}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4014"
+    ports:
+      - "4014"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4014/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - service-mesh-net
+
+  fulfillment-service:
+    build: ./services/fulfillment-service
+    environment:
+      SEED: "${SEED}"
+      SERVICE_TOKEN: "${SERVICE_TOKEN}"
+      PORT: "4015"
+    ports:
+      - "4015"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4015/health"]
+      interval: 2s
+      timeout: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+    networks:
+      - service-mesh-net
+
+networks:
+  service-mesh-net:
+    driver: bridge

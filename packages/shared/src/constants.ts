@@ -439,4 +439,17 @@ export const VARIANT_PATHOGENICITY_DIMENSIONS: ScoringDimension[] = dims(
   { correctness: { description: "Classification accuracy — AUROC/AUPRC for pathogenicity prediction" }, methodology: { description: "Feature engineering — conservation scores, structural features, population frequency integration" }, analysis: { description: "Variant interpretation — mechanistic explanations, functional impact predictions, clinical relevance" } },
 );
 
+export const SERVICE_MESH_DIMENSIONS: ScoringDimension[] = dims(
+  { correctness: 0.30, completeness: 0.20, methodology: 0.20, analysis: 0.20, speed: 0.10 },
+  { correctness: { description: "Transactions completed correctly with valid data across all services" }, completeness: { description: "All required orders fulfilled including saga compensation" }, methodology: { description: "Efficient API usage, proper sequencing, minimal redundant calls" }, analysis: { description: "Service topology understanding, error recovery, consistency handling" } },
+);
 
+export const INBOX_ZERO_DIMENSIONS: ScoringDimension[] = dims(
+  { correctness: 0.30, completeness: 0.25, methodology: 0.25, speed: 0.20 },
+  { correctness: { description: "Priority classification accuracy and threat identification" }, completeness: { description: "All messages triaged, responses drafted for actionable items" }, methodology: { description: "Quality of reasoning, cross-referencing knowledge base in briefing" }, speed: { description: "Time efficiency relative to the 30-minute time limit" } },
+);
+
+export const WEB_RECON_DIMENSIONS: ScoringDimension[] = dims(
+  { correctness: 0.30, completeness: 0.25, precision: 0.20, methodology: 0.15, speed: 0.10 },
+  { correctness: { description: "Company profile accuracy and correct unreleased product identification" }, completeness: { description: "Coverage of all required intelligence categories: profile, products, personnel, strategic moves" }, precision: { description: "Fraction of reported findings that are genuine — penalizes red herring inclusion" }, methodology: { description: "Cross-referencing quality and source diversity across services" } },
+);
