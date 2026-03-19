@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { MultiSelect } from "@/components/multi-select";
 import { Tooltip } from "@/components/tooltip";
+import {
+  InteractiveScoreTrendChart,
+  EloDistributionChart,
+  ModelComparisonChart,
+  InteractiveSparkline,
+  HarnessEloComparisonChart,
+  HarnessScoreComparisonChart,
+} from "./charts";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -231,6 +239,9 @@ export function LeaderboardView({
 
 // ── Agents Tab ──────────────────────────────────────────────────────
 
+type SortKey = "rank" | "elo" | "wins" | "losses" | "streak" | "matches";
+type SortDir = "asc" | "desc";
+
 function AgentsTab({
   agents,
   activeFilters,
@@ -244,6 +255,20 @@ function AgentsTab({
   const [titleFilter, setTitleFilter] = useState<Set<string>>(new Set());
   const [harnessFilter, setHarnessFilter] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
+  const [sortKey, setSortKey] = useState<SortKey>("rank");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = useCallback((key: SortKey) => {
+    setSortKey((prev) => {
+      if (prev === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return prev;
+      }
+      setSortDir(key === "rank" ? "asc" : "desc");
+      return key;
+    });
+    setPage(0);
+  }, []);
 
   const titles = useMemo(
     () => [...new Set(agents.map((a) => a.title))].sort(),
@@ -257,13 +282,31 @@ function AgentsTab({
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return agents.filter((a) => {
+    const list = agents.filter((a) => {
       if (q && !a.name.toLowerCase().includes(q) && !(a.base_model ?? "").toLowerCase().includes(q)) return false;
       if (titleFilter.size > 0 && !titleFilter.has(a.title)) return false;
       if (harnessFilter.size > 0 && (!a.harness || !harnessFilter.has(a.harness.id))) return false;
       return true;
     });
-  }, [agents, search, titleFilter, harnessFilter]);
+
+    // Apply sorting
+    if (sortKey !== "rank" || sortDir !== "asc") {
+      list.sort((a, b) => {
+        let cmp = 0;
+        switch (sortKey) {
+          case "rank": cmp = a.rank - b.rank; break;
+          case "elo": cmp = a.elo - b.elo; break;
+          case "wins": cmp = a.win_count - b.win_count; break;
+          case "losses": cmp = a.loss_count - b.loss_count; break;
+          case "streak": cmp = a.current_streak - b.current_streak; break;
+          case "matches": cmp = a.match_count - b.match_count; break;
+        }
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return list;
+  }, [agents, search, titleFilter, harnessFilter, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
@@ -383,13 +426,13 @@ function AgentsTab({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border text-[10px] text-text-muted uppercase tracking-wider">
-                  <th className="py-3 px-4 text-left font-bold w-14">Rank</th>
+                  <SortableHeader label="Rank" sortKey="rank" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="left" className="w-14" />
                   <th className="py-3 px-4 text-left font-bold">Agent</th>
                   <th className="py-3 px-4 text-left font-bold">Title</th>
                   <th className="py-3 px-4 text-left font-bold"><Tooltip text="The agent's system prompt and tool configuration." position="bottom">Harness</Tooltip></th>
-                  <th className="py-3 px-4 text-right font-bold"><Tooltip text="Rating that goes up on wins and down on losses. Starts at 1000." position="bottom">Elo</Tooltip></th>
-                  <th className="py-3 px-4 text-center font-bold"><Tooltip text="Wins / Draws / Losses" position="bottom">W/D/L</Tooltip></th>
-                  <th className="py-3 px-4 text-right font-bold"><Tooltip text="Current consecutive wins or losses." position="bottom">Streak</Tooltip></th>
+                  <SortableHeader label="Elo" sortKey="elo" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="right" tooltip="Rating that goes up on wins and down on losses. Starts at 1000." />
+                  <SortableHeader label="W/D/L" sortKey="wins" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="center" tooltip="Sort by wins. Wins / Draws / Losses" />
+                  <SortableHeader label="Streak" sortKey="streak" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} align="right" tooltip="Current consecutive wins or losses." />
                   <th className="py-3 px-4 text-right font-bold"><Tooltip text="Elo rating trend over recent matches." position="bottom">Trend</Tooltip></th>
                 </tr>
               </thead>
@@ -444,7 +487,7 @@ function AgentsTab({
                         <StreakCell streak={agent.current_streak} />
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Sparkline data={agent.elo_history} />
+                        <InteractiveSparkline data={agent.elo_history} />
                       </td>
                     </tr>
                   ))
@@ -463,6 +506,16 @@ function AgentsTab({
         </>
       )}
 
+      {/* Elo Distribution */}
+      {agents.length >= 3 && (
+        <InsightsSection title="Elo Distribution" accent="sky" className="mt-10">
+          <p className="text-[10px] text-text-muted mb-3">
+            How agent ratings are spread across the arena. Gold bar highlights the median.
+          </p>
+          <EloDistributionChart agents={agents} />
+        </InsightsSection>
+      )}
+
       {/* Benchmark Insights */}
       {analytics && analytics.score_trend.length > 1 && (
         <InsightsSection title="Platform Score Trend" accent="emerald" className="mt-10">
@@ -476,7 +529,7 @@ function AgentsTab({
             <StatPill label="Win Rate" value={pct(analytics.headlines.platform_win_rate)} color="emerald" />
             <StatPill label="Matches" value={analytics.headlines.matches_completed.toLocaleString()} />
           </div>
-          <ScoreTrendChart data={analytics.score_trend} />
+          <InteractiveScoreTrendChart data={analytics.score_trend} />
         </InsightsSection>
       )}
     </>
@@ -508,6 +561,16 @@ function ModelsTab({ analytics, framework }: { analytics: AnalyticsData | null; 
           ? `How each LLM performs when used by ${framework} agents. pass@1 = first-attempt win rate.`
           : "How each LLM performs across all challenges. pass@1 = first-attempt win rate."}
       </p>
+
+      {/* Visual model comparison */}
+      {models.length > 1 && (
+        <InsightsSection title="Model Comparison" accent="emerald" className="mb-8">
+          <p className="text-[10px] text-text-muted mb-3">
+            Visual comparison of model performance. Green = median score, blue = mean score.
+          </p>
+          <ModelComparisonChart models={models} />
+        </InsightsSection>
+      )}
 
       {models.length === 0 ? (
         <div className="card p-8 text-center">
@@ -575,7 +638,7 @@ function ModelsTab({ analytics, framework }: { analytics: AnalyticsData | null; 
           <p className="text-[10px] text-text-muted mb-3">
             Daily median score across all matches, last 90 days.
           </p>
-          <ScoreTrendChart data={analytics.score_trend} />
+          <InteractiveScoreTrendChart data={analytics.score_trend} />
         </InsightsSection>
       )}
 
@@ -696,40 +759,23 @@ function HarnessesTab({
         </div>
       )}
 
+      {/* Harness Elo Comparison Chart */}
+      {leaderboard.length > 1 && (
+        <InsightsSection title="Elo Comparison" accent="purple">
+          <p className="text-[10px] text-text-muted mb-3">
+            Average Elo rating per harness. Higher bars indicate stronger overall performance.
+          </p>
+          <HarnessEloComparisonChart harnesses={leaderboard} />
+        </InsightsSection>
+      )}
+
       {/* Score Analytics from benchmark data */}
       {analytics && analytics.harness_benchmark.length > 0 && (
-        <InsightsSection title="Score Analytics" accent="purple">
+        <InsightsSection title="Score Analytics" accent="purple" className="mt-6">
           <p className="text-[10px] text-text-muted mb-3">
-            Median and mean scores per harness from match data. Score-based view complements the Elo-based ranking above.
+            Median vs mean scores and win rates per harness. Interactive charts with hover tooltips.
           </p>
-          <div className="space-y-2">
-            {analytics.harness_benchmark.map((h) => {
-              const maxScore = Math.max(...analytics.harness_benchmark.map((b) => b.median_score), 1);
-              const barWidth = (h.median_score / maxScore) * 100;
-              return (
-                <div key={h.harness_id} className="flex items-center gap-3">
-                  <span className="text-[10px] font-mono text-purple w-32 shrink-0 truncate">{h.harness_id}</span>
-                  <div className="flex-1 relative h-5 bg-bg-elevated rounded overflow-hidden">
-                    <div
-                      className="absolute h-full bg-purple/20 rounded"
-                      style={{ width: `${barWidth}%` }}
-                    />
-                    <div className="absolute inset-0 flex items-center px-2">
-                      <span className={`text-[10px] font-bold ${scoreColor(h.median_score)}`}>
-                        {h.median_score}
-                      </span>
-                      <span className="text-[9px] text-text-muted ml-2">
-                        mean {h.mean_score}
-                      </span>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-bold w-12 text-right ${winRateColor(h.win_rate)}`}>
-                    {pct(h.win_rate)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <HarnessScoreComparisonChart benchmarks={analytics.harness_benchmark} />
         </InsightsSection>
       )}
     </>
@@ -788,56 +834,6 @@ function QuartileBar({ p25, p75, median }: { p25: number; p75: number; median: n
   );
 }
 
-function ScoreTrendChart({ data }: { data: ScoreTrendPoint[] }) {
-  if (data.length < 2) {
-    return <div className="text-xs text-text-muted text-center py-8">Not enough data for trend</div>;
-  }
-
-  const values = data.map((d) => d.median_score);
-  const min = Math.min(...values) - 50;
-  const max = Math.max(...values) + 50;
-  const range = max - min || 1;
-  const w = 700;
-  const h = 120;
-
-  const points = values
-    .map((v, i) => {
-      const x = (i / Math.max(1, values.length - 1)) * w;
-      const y = h - ((v - min) / range) * (h - 8) - 4;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  const areaPoints = `0,${h} ${points} ${w},${h}`;
-  const trending = values[values.length - 1] >= values[0];
-  const strokeColor = trending ? "var(--color-emerald)" : "var(--color-coral)";
-
-  return (
-    <div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" style={{ height: 120 }}>
-        <defs>
-          <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.15" />
-            <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <polygon points={areaPoints} fill="url(#trendGrad)" />
-        <polyline
-          points={points}
-          fill="none"
-          stroke={strokeColor}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <div className="flex justify-between text-[10px] text-text-muted mt-1">
-        <span>{data[0]?.date}</span>
-        <span>{data[data.length - 1]?.date}</span>
-      </div>
-    </div>
-  );
-}
 
 function Pagination({
   page,
@@ -874,6 +870,44 @@ function Pagination({
   );
 }
 
+function SortableHeader({
+  label,
+  sortKey: key,
+  currentSort,
+  currentDir,
+  onSort,
+  align = "left",
+  tooltip,
+  className = "",
+}: {
+  label: string;
+  sortKey: SortKey;
+  currentSort: SortKey;
+  currentDir: SortDir;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "right" | "center";
+  tooltip?: string;
+  className?: string;
+}) {
+  const isActive = currentSort === key;
+  const arrow = isActive ? (currentDir === "asc" ? " ↑" : " ↓") : "";
+  const content = (
+    <button
+      type="button"
+      onClick={() => onSort(key)}
+      className={`font-bold hover:text-text transition-colors cursor-pointer select-none ${isActive ? "text-text" : ""}`}
+    >
+      {label}{arrow}
+    </button>
+  );
+
+  return (
+    <th className={`py-3 px-4 text-${align} font-bold ${className}`}>
+      {tooltip ? <Tooltip text={tooltip} position="bottom">{content}</Tooltip> : content}
+    </th>
+  );
+}
+
 function RankCell({ rank }: { rank: number }) {
   const cls =
     rank === 1
@@ -902,37 +936,3 @@ function StreakCell({ streak }: { streak: number }) {
   );
 }
 
-function Sparkline({ data }: { data: { ts: string; elo: number }[] }) {
-  if (!data || data.length < 2)
-    return <span className="text-text-muted text-xs">&mdash;</span>;
-
-  const values = data.slice(-12).map((d) => d.elo);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const w = 80;
-  const h = 24;
-
-  const points = values
-    .map((v, i) => {
-      const x = (i / (values.length - 1)) * w;
-      const y = h - ((v - min) / range) * (h - 4) - 2;
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  const trending = values[values.length - 1] >= values[0];
-
-  return (
-    <svg width={w} height={h} className="inline-block">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={trending ? "var(--color-emerald)" : "var(--color-coral)"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
