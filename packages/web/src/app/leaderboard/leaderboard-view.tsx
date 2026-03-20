@@ -463,11 +463,31 @@ function AgentsTab({
         </>
       )}
 
+      {/* Elo Distribution */}
+      {agents.length >= 3 && (
+        <InsightsSection title="Elo Distribution" accent="gold" className="mt-10">
+          <p className="text-[10px] text-text-muted mb-3">
+            How agents are spread across rating brackets. Taller bars = more competition at that level.
+          </p>
+          <EloDistributionChart agents={agents} />
+        </InsightsSection>
+      )}
+
+      {/* Aggregate W/D/L */}
+      {agents.length > 0 && (
+        <InsightsSection title="Arena Balance" accent="coral" className="mt-6">
+          <p className="text-[10px] text-text-muted mb-3">
+            Aggregate wins, draws, and losses across all agents. A balanced arena has roughly equal wins and losses.
+          </p>
+          <AggregateWDLBar agents={agents} />
+        </InsightsSection>
+      )}
+
       {/* Benchmark Insights */}
       {analytics && analytics.score_trend.length > 1 && (
-        <InsightsSection title="Platform Score Trend" accent="emerald" className="mt-10">
+        <InsightsSection title="Platform Score Trend" accent="emerald" className="mt-6">
           <p className="text-[10px] text-text-muted mb-3">
-            Daily median score across all matches, last 90 days.
+            Daily median score and match volume, last 90 days. Hover to inspect individual days.
           </p>
           <div className="flex items-center gap-6 mb-4">
             {analytics.headlines.platform_median_score !== null && (
@@ -508,6 +528,16 @@ function ModelsTab({ analytics, framework }: { analytics: AnalyticsData | null; 
           ? `How each LLM performs when used by ${framework} agents. pass@1 = first-attempt win rate.`
           : "How each LLM performs across all challenges. pass@1 = first-attempt win rate."}
       </p>
+
+      {/* Visual comparison chart */}
+      {models.length >= 2 && (
+        <InsightsSection title="Model Comparison" accent="purple" className="mb-6">
+          <p className="text-[10px] text-text-muted mb-3">
+            Median score by model. Gold line shows score spread (P25–P75). Win rate on the right.
+          </p>
+          <ModelComparisonChart models={models} />
+        </InsightsSection>
+      )}
 
       {models.length === 0 ? (
         <div className="card p-8 text-center">
@@ -761,7 +791,7 @@ function InsightsSection({
 }
 
 function StatPill({ label, value, color }: { label: string; value: string; color?: string }) {
-  const cls = color === "gold" ? "text-gold" : color === "emerald" ? "text-emerald" : color === "sky" ? "text-sky" : "text-text";
+  const cls = color === "gold" ? "text-gold" : color === "emerald" ? "text-emerald" : color === "coral" ? "text-coral" : color === "sky" ? "text-sky" : "text-text";
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-[10px] text-text-muted uppercase tracking-wider">{label}</span>
@@ -789,38 +819,71 @@ function QuartileBar({ p25, p75, median }: { p25: number; p75: number; median: n
 }
 
 function ScoreTrendChart({ data }: { data: ScoreTrendPoint[] }) {
+  const [hover, setHover] = useState<number | null>(null);
+
   if (data.length < 2) {
     return <div className="text-xs text-text-muted text-center py-8">Not enough data for trend</div>;
   }
 
   const values = data.map((d) => d.median_score);
+  const matchCounts = data.map((d) => d.match_count);
+  const maxMatches = Math.max(...matchCounts, 1);
   const min = Math.min(...values) - 50;
   const max = Math.max(...values) + 50;
   const range = max - min || 1;
   const w = 700;
-  const h = 120;
+  const h = 160;
+  const barAreaH = h * 0.35;
+  const lineAreaTop = 4;
+  const lineAreaH = h - barAreaH - lineAreaTop;
 
   const points = values
     .map((v, i) => {
       const x = (i / Math.max(1, values.length - 1)) * w;
-      const y = h - ((v - min) / range) * (h - 8) - 4;
+      const y = lineAreaTop + lineAreaH - ((v - min) / range) * (lineAreaH - 8);
       return `${x},${y}`;
     })
     .join(" ");
 
-  const areaPoints = `0,${h} ${points} ${w},${h}`;
+  const areaPoints = `0,${lineAreaTop + lineAreaH} ${points} ${w},${lineAreaTop + lineAreaH}`;
   const trending = values[values.length - 1] >= values[0];
   const strokeColor = trending ? "var(--color-emerald)" : "var(--color-coral)";
+  const barW = Math.max(2, (w / data.length) * 0.6);
 
   return (
     <div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" style={{ height: 120 }}>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full"
+        preserveAspectRatio="none"
+        style={{ height: 160 }}
+        onMouseLeave={() => setHover(null)}
+      >
         <defs>
           <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={strokeColor} stopOpacity="0.15" />
             <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
           </linearGradient>
         </defs>
+        {/* Match volume bars */}
+        {matchCounts.map((count, i) => {
+          const x = (i / Math.max(1, data.length - 1)) * w - barW / 2;
+          const barH = (count / maxMatches) * barAreaH;
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={h - barH}
+              width={barW}
+              height={barH}
+              fill="var(--color-sky)"
+              opacity={hover === i ? 0.35 : 0.12}
+              rx={1}
+              onMouseEnter={() => setHover(i)}
+            />
+          );
+        })}
+        {/* Score trend line + area */}
         <polygon points={areaPoints} fill="url(#trendGrad)" />
         <polyline
           points={points}
@@ -830,10 +893,313 @@ function ScoreTrendChart({ data }: { data: ScoreTrendPoint[] }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+        {/* Hover dot */}
+        {hover !== null && (() => {
+          const x = (hover / Math.max(1, values.length - 1)) * w;
+          const y = lineAreaTop + lineAreaH - ((values[hover] - min) / range) * (lineAreaH - 8);
+          return (
+            <>
+              <line x1={x} y1={0} x2={x} y2={h} stroke="var(--color-border-highlight)" strokeWidth="1" strokeDasharray="3,3" />
+              <circle cx={x} cy={y} r={4} fill={strokeColor} stroke="var(--color-bg)" strokeWidth="2" />
+            </>
+          );
+        })()}
+        {/* Invisible hover zones */}
+        {data.map((_, i) => {
+          const x = (i / Math.max(1, data.length - 1)) * w;
+          const zoneW = w / data.length;
+          return (
+            <rect
+              key={`zone-${i}`}
+              x={x - zoneW / 2}
+              y={0}
+              width={zoneW}
+              height={h}
+              fill="transparent"
+              onMouseEnter={() => setHover(i)}
+            />
+          );
+        })}
       </svg>
       <div className="flex justify-between text-[10px] text-text-muted mt-1">
         <span>{data[0]?.date}</span>
+        {hover !== null ? (
+          <span className="text-text-secondary">
+            {data[hover].date} — score <span className="text-gold font-bold">{values[hover]}</span> · <span className="text-sky">{matchCounts[hover]} matches</span>
+          </span>
+        ) : (
+          <span className="text-text-muted text-[9px]">hover for details · bars = match volume</span>
+        )}
         <span>{data[data.length - 1]?.date}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Elo Distribution Histogram ──────────────────────────────────────
+
+function EloDistributionChart({ agents }: { agents: LeaderboardAgent[] }) {
+  const [hoverBucket, setHoverBucket] = useState<number | null>(null);
+
+  if (agents.length < 3) return null;
+
+  const elos = agents.map((a) => a.elo);
+  const minElo = Math.floor(Math.min(...elos) / 100) * 100;
+  const maxElo = Math.ceil(Math.max(...elos) / 100) * 100;
+  const bucketSize = 100;
+  const buckets: { label: string; count: number; min: number; max: number }[] = [];
+
+  for (let start = minElo; start < maxElo; start += bucketSize) {
+    const count = elos.filter((e) => e >= start && e < start + bucketSize).length;
+    buckets.push({ label: `${start}`, count, min: start, max: start + bucketSize });
+  }
+
+  const maxCount = Math.max(...buckets.map((b) => b.count), 1);
+  const w = 700;
+  const h = 140;
+  const barPad = 4;
+  const barW = (w - barPad * (buckets.length - 1)) / buckets.length;
+
+  return (
+    <div>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full"
+        preserveAspectRatio="none"
+        style={{ height: 140 }}
+        onMouseLeave={() => setHoverBucket(null)}
+      >
+        <defs>
+          <linearGradient id="eloBarGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-gold)" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="var(--color-gold)" stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        {buckets.map((bucket, i) => {
+          const barH = Math.max(2, (bucket.count / maxCount) * (h - 24));
+          const x = i * (barW + barPad);
+          const y = h - barH - 16;
+          const isHovered = hoverBucket === i;
+          return (
+            <g key={i} onMouseEnter={() => setHoverBucket(i)}>
+              <rect
+                x={x}
+                y={y}
+                width={barW}
+                height={barH}
+                fill={isHovered ? "var(--color-gold)" : "url(#eloBarGrad)"}
+                opacity={isHovered ? 1 : 0.7}
+                rx={2}
+              />
+              {/* Count label on top of bar */}
+              {bucket.count > 0 && (
+                <text
+                  x={x + barW / 2}
+                  y={y - 4}
+                  textAnchor="middle"
+                  fill={isHovered ? "var(--color-gold)" : "var(--color-text-muted)"}
+                  fontSize="10"
+                  fontFamily="var(--font-mono)"
+                >
+                  {bucket.count}
+                </text>
+              )}
+              {/* Bucket label at bottom */}
+              <text
+                x={x + barW / 2}
+                y={h - 2}
+                textAnchor="middle"
+                fill="var(--color-text-muted)"
+                fontSize="9"
+                fontFamily="var(--font-mono)"
+              >
+                {bucket.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex justify-between text-[10px] text-text-muted mt-1">
+        {hoverBucket !== null ? (
+          <span className="text-text-secondary">
+            Elo {buckets[hoverBucket].min}–{buckets[hoverBucket].max}: <span className="text-gold font-bold">{buckets[hoverBucket].count} agent{buckets[hoverBucket].count !== 1 ? "s" : ""}</span>
+          </span>
+        ) : (
+          <span>Distribution of Elo ratings across all agents</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Aggregate W/D/L Bar ────────────────────────────────────────────
+
+function AggregateWDLBar({ agents }: { agents: LeaderboardAgent[] }) {
+  if (agents.length === 0) return null;
+
+  const totals = agents.reduce(
+    (acc, a) => ({
+      wins: acc.wins + a.win_count,
+      draws: acc.draws + a.draw_count,
+      losses: acc.losses + a.loss_count,
+    }),
+    { wins: 0, draws: 0, losses: 0 }
+  );
+
+  const total = totals.wins + totals.draws + totals.losses;
+  if (total === 0) return null;
+
+  const winPct = (totals.wins / total) * 100;
+  const drawPct = (totals.draws / total) * 100;
+  const lossPct = (totals.losses / total) * 100;
+
+  return (
+    <div>
+      {/* Stats row */}
+      <div className="flex items-center gap-6 mb-3">
+        <StatPill label="Total Matches" value={(total / 2).toLocaleString()} />
+        <StatPill label="Wins" value={totals.wins.toLocaleString()} color="emerald" />
+        <StatPill label="Draws" value={totals.draws.toLocaleString()} color="gold" />
+        <StatPill label="Losses" value={totals.losses.toLocaleString()} color="coral" />
+      </div>
+      {/* Stacked bar */}
+      <div className="relative h-8 rounded overflow-hidden flex">
+        <div
+          className="h-full bg-emerald/60 transition-all duration-500 flex items-center justify-center"
+          style={{ width: `${winPct}%` }}
+        >
+          {winPct > 8 && (
+            <span className="text-[10px] font-bold text-bg">{winPct.toFixed(1)}%</span>
+          )}
+        </div>
+        <div
+          className="h-full bg-gold/60 transition-all duration-500 flex items-center justify-center"
+          style={{ width: `${drawPct}%` }}
+        >
+          {drawPct > 8 && (
+            <span className="text-[10px] font-bold text-bg">{drawPct.toFixed(1)}%</span>
+          )}
+        </div>
+        <div
+          className="h-full bg-coral/60 transition-all duration-500 flex items-center justify-center"
+          style={{ width: `${lossPct}%` }}
+        >
+          {lossPct > 8 && (
+            <span className="text-[10px] font-bold text-bg">{lossPct.toFixed(1)}%</span>
+          )}
+        </div>
+      </div>
+      <div className="flex justify-between text-[9px] text-text-muted mt-1">
+        <span className="text-emerald">Wins</span>
+        <span className="text-gold">Draws</span>
+        <span className="text-coral">Losses</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Model Comparison Bar Chart ──────────────────────────────────────
+
+function ModelComparisonChart({ models }: { models: ModelBenchmarkEntry[] }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  if (models.length < 2) return null;
+
+  const maxScore = Math.max(...models.map((m) => m.median_score), 1);
+  const rowH = 32;
+  const labelW = 140;
+  const barPad = 6;
+  const w = 700;
+  const h = models.length * (rowH + barPad) + 8;
+
+  return (
+    <div>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full"
+        style={{ height: Math.min(h, 400) }}
+        preserveAspectRatio="xMinYMin meet"
+        onMouseLeave={() => setHoverIdx(null)}
+      >
+        <defs>
+          <linearGradient id="modelBarGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="var(--color-purple)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--color-purple)" stopOpacity="0.7" />
+          </linearGradient>
+        </defs>
+        {models.map((m, i) => {
+          const y = i * (rowH + barPad);
+          const barMaxW = w - labelW - 80;
+          const barWidth = (m.median_score / maxScore) * barMaxW;
+          const isHovered = hoverIdx === i;
+
+          return (
+            <g key={m.model} onMouseEnter={() => setHoverIdx(i)}>
+              {/* Background row highlight */}
+              {isHovered && (
+                <rect x={0} y={y - 2} width={w} height={rowH + 4} fill="var(--color-bg-elevated)" rx={3} />
+              )}
+              {/* Model name */}
+              <text
+                x={labelW - 8}
+                y={y + rowH / 2 + 4}
+                textAnchor="end"
+                fill={isHovered ? "var(--color-text)" : "var(--color-text-secondary)"}
+                fontSize="11"
+                fontFamily="var(--font-mono)"
+                fontWeight={i === 0 ? "bold" : "normal"}
+              >
+                {m.model.length > 18 ? m.model.slice(0, 18) + "…" : m.model}
+              </text>
+              {/* Score bar */}
+              <rect
+                x={labelW}
+                y={y + 4}
+                width={barWidth}
+                height={rowH - 8}
+                fill={isHovered ? "var(--color-purple)" : "url(#modelBarGrad)"}
+                rx={3}
+              />
+              {/* P25-P75 range indicator */}
+              {m.p75 > m.p25 && (
+                <rect
+                  x={labelW + (m.p25 / maxScore) * barMaxW}
+                  y={y + rowH / 2 - 1}
+                  width={((m.p75 - m.p25) / maxScore) * barMaxW}
+                  height={2}
+                  fill="var(--color-gold)"
+                  opacity={0.6}
+                />
+              )}
+              {/* Score value */}
+              <text
+                x={labelW + barWidth + 6}
+                y={y + rowH / 2 + 4}
+                fill={m.median_score >= 700 ? "var(--color-emerald)" : m.median_score >= 400 ? "var(--color-gold)" : "var(--color-coral)"}
+                fontSize="11"
+                fontFamily="var(--font-mono)"
+                fontWeight="bold"
+              >
+                {m.median_score}
+              </text>
+              {/* Win rate on far right */}
+              <text
+                x={w - 4}
+                y={y + rowH / 2 + 4}
+                textAnchor="end"
+                fill={m.win_rate >= 0.5 ? "var(--color-emerald)" : "var(--color-coral)"}
+                fontSize="10"
+                fontFamily="var(--font-mono)"
+              >
+                {pct(m.win_rate)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex justify-between text-[9px] text-text-muted mt-2">
+        <span>Median score (bar) · P25–P75 range (gold line)</span>
+        <span>Win rate →</span>
       </div>
     </div>
   );
