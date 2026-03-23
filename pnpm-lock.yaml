@@ -26,16 +26,16 @@ importers:
         version: link:../shared
       '@hono/node-server':
         specifier: ^1.13.0
-        version: 1.19.9(hono@4.12.2)
+        version: 1.19.9(hono@4.12.9)
       '@hono/zod-validator':
         specifier: ^0.7.6
-        version: 0.7.6(hono@4.12.2)(zod@3.25.76)
+        version: 0.7.6(hono@4.12.9)(zod@3.25.76)
       drizzle-orm:
         specifier: ^0.38.4
         version: 0.38.4(@types/better-sqlite3@7.6.13)(@types/react@19.2.14)(better-sqlite3@11.10.0)(postgres@3.4.8)(react@19.2.4)
       hono:
-        specifier: ^4.7.0
-        version: 4.12.2
+        specifier: ^4.12.9
+        version: 4.12.9
       postgres:
         specifier: ^3.4.8
         version: 3.4.8
@@ -130,8 +130,8 @@ importers:
         specifier: ^12.35.2
         version: 12.35.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       hono:
-        specifier: ^4.7.0
-        version: 4.12.2
+        specifier: ^4.12.9
+        version: 4.12.9
       next:
         specifier: ^15.2.0
         version: 15.5.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1549,8 +1549,8 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono@4.12.2:
-    resolution: {integrity: sha512-gJnaDHXKDayjt8ue0n8Gs0A007yKXj4Xzb8+cNjZeYsSzzwKc0Lr+OZgYwVfB0pHfUs17EPoLvrOsEaJ9mj+Tg==}
+  hono@4.12.9:
+    resolution: {integrity: sha512-wy3T8Zm2bsEvxKZM5w21VdHDDcwVS1yUFFY6i8UobSsKfFceT7TOwhbhfKsDyx7tYQlmRM5FLpIuYvNFyjctiA==}
     engines: {node: '>=16.9.0'}
 
   http-errors@2.0.1:
@@ -2396,13 +2396,13 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-  '@hono/node-server@1.19.9(hono@4.12.2)':
+  '@hono/node-server@1.19.9(hono@4.12.9)':
     dependencies:
-      hono: 4.12.2
+      hono: 4.12.9
 
-  '@hono/zod-validator@0.7.6(hono@4.12.2)(zod@3.25.76)':
+  '@hono/zod-validator@0.7.6(hono@4.12.9)(zod@3.25.76)':
     dependencies:
-      hono: 4.12.2
+      hono: 4.12.9
       zod: 3.25.76
 
   '@img/colour@1.0.0':
@@ -2523,7 +2523,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.27.1(zod@3.25.76)':
     dependencies:
-      '@hono/node-server': 1.19.9(hono@4.12.2)
+      '@hono/node-server': 1.19.9(hono@4.12.9)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -2533,7 +2533,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.2.1
       express-rate-limit: 8.3.1(express@5.2.1)
-      hono: 4.12.2
+      hono: 4.12.9
       jose: 6.2.1
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -3201,7 +3201,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.12.2: {}
+  hono@4.12.9: {}
 
   http-errors@2.0.1:
     dependencies:
